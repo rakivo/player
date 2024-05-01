@@ -1,4 +1,4 @@
-CC = gcc
+CC = cc
 WIN_CC = cl
 WIN_CROSS_CC = x86_64-w64-mingw32-gcc
 

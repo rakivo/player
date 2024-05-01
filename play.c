@@ -8,7 +8,7 @@
 
 #include "play.h"
 
-const char *SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
+const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
     ".wav",
     ".ogg",
     ".mp3",
@@ -141,14 +141,7 @@ bool is_music(const char* path)
     return false;
 }
 
-void supported_extensions(void)
-{
-    fprintf(stderr, "Supported extensions:\n %s", SUPPORTED_FORMATS[0]);
-    for (size_t i = 1; i < SUPPORTED_FORMATS_CAP; ++i)
-        fprintf(stderr, ", %s", SUPPORTED_FORMATS[i]);
-}
-
-Vector2 center_text(Vector2 text_size)
+Vector2 center_text(const Vector2 text_size)
 {
     return (Vector2) {
         .x = (X_CENTER - (text_size.x / 2)),
@@ -156,7 +149,7 @@ Vector2 center_text(Vector2 text_size)
     };
 }
 
-void get_song_name(const char *input, char *output, size_t output_size)
+void get_song_name(const char *input, char *output, const size_t output_size)
 {
     size_t input_len = strlen(input);
     size_t out_len = 0;
@@ -174,4 +167,11 @@ void get_song_name(const char *input, char *output, size_t output_size)
         output[i] = output[out_len - i - 1];
         output[out_len - i - 1] = temp;
     }
+}
+
+void supported_extensions(void)
+{
+    fprintf(stderr, "Supported extensions:\n %s", SUPPORTED_FORMATS[0]);
+    for (size_t i = 1; i < SUPPORTED_FORMATS_CAP; ++i)
+        fprintf(stderr, ", %s", SUPPORTED_FORMATS[i]);
 }
