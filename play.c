@@ -25,19 +25,18 @@ int main()
     InitAudioDevice();
     SetExitKey(KEY_Q);
 
-    Font font = LoadFontEx(FONT, 75, 0, 0);
-    const float font_size = (float) font.baseSize;
+    Font font = LoadFontEx(FONT, FONT_SIZE, 0, 0);
     GenTextureMipmaps(&font.texture);
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
 
     char name_text[NAME_TEXT_CAP] = NAME_TEXT_MESSAGE;
-    Vector2 name_text_size = MeasureTextEx(font, name_text, font_size, FONT_SPACING);
+    Vector2 name_text_size = MeasureTextEx(font, name_text, FONT_SIZE, FONT_SPACING);
     Vector2 name_text_pos = center_text(name_text_size);
     name_text_pos.y += 150;
     name_text_pos.x -= 470;
 
     char time_text[TIME_TEXT_CAP] = TIME_TEXT_MESSAGE;
-    Vector2 time_text_size = MeasureTextEx(font, time_text, font_size, FONT_SPACING);
+    Vector2 time_text_size = MeasureTextEx(font, time_text, FONT_SIZE, FONT_SPACING);
     Vector2 time_text_pos = center_text(time_text_size);
     time_text_pos.y += 230;
     time_text_pos.x -= 470;
@@ -107,8 +106,8 @@ int main()
 
         BeginDrawing();
             ClearBackground(BACKGROUND_COLOR);
-            DrawTextEx(font, time_text, time_text_pos, font_size, FONT_SPACING, RAYWHITE);
-            DrawTextEx(font, name_text, name_text_pos, font_size, FONT_SPACING, RAYWHITE);
+            DrawTextEx(font, time_text, time_text_pos, FONT_SIZE, FONT_SPACING, RAYWHITE);
+            DrawTextEx(font, name_text, name_text_pos, FONT_SIZE, FONT_SPACING, RAYWHITE);
         EndDrawing();
     }
 

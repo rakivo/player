@@ -17,6 +17,7 @@ void get_song_name(const char *input, char *output, size_t output_size);
 #endif
 
 #define FONT "resources/Alegreya-Regular.ttf"
+#define FONT_SIZE 50.f
 #define FONT_SPACING 2.f
 
 #define SCREEN_WIDTH 1000
