@@ -121,6 +121,26 @@ int main(void)
     return 0;
 }
 
+void get_song_name(const char* input, char* output, const size_t output_size)
+{
+    size_t input_len = strlen(input);
+    size_t out_len = 0;
+
+    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i) {
+        if (out_len < output_size - 1) {
+            output[out_len] = input[i];
+            out_len++;
+        }
+    }
+
+    output[out_len] = '\0';
+    for (size_t i = 0; i < out_len / 2; i++) {
+        char temp = output[i];
+        output[i] = output[out_len - i - 1];
+        output[out_len - i - 1] = temp;
+    }
+}
+
 Color rgba(const char* hex)
 {
     Color ret = {0, 0, 0, 255};
@@ -147,26 +167,6 @@ Vector2 center_text(const Vector2 text_size)
         .x = (X_CENTER - (text_size.x / 2)),
         .y = (Y_CENTER - (text_size.y / 2))
     };
-}
-
-void get_song_name(const char *input, char *output, const size_t output_size)
-{
-    size_t input_len = strlen(input);
-    size_t out_len = 0;
-
-    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i) {
-        if (out_len < output_size - 1) {
-            output[out_len] = input[i];
-            out_len++;
-        }
-    }
-
-    output[out_len] = '\0';
-    for (size_t i = 0; i < out_len / 2; i++) {
-        char temp = output[i];
-        output[i] = output[out_len - i - 1];
-        output[out_len - i - 1] = temp;
-    }
 }
 
 void supported_extensions(void)
