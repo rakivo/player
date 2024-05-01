@@ -18,7 +18,7 @@ const char *SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
     ".flac"*/
 };
 
-int main()
+int main(void)
 {
     SetTargetFPS(30);
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Play");
@@ -141,7 +141,7 @@ bool is_music(const char* path)
     return false;
 }
 
-void supported_extensions()
+void supported_extensions(void)
 {
     fprintf(stderr, "Supported extensions:\n %s", SUPPORTED_FORMATS[0]);
     for (size_t i = 1; i < SUPPORTED_FORMATS_CAP; ++i)
