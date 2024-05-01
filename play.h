@@ -5,7 +5,7 @@ void supported_extensions();
 Color rgba(const char* hex);
 bool is_music(const char* path);
 Vector2 center_text(Vector2 text_size);
-void collect_from_end(const char *input, char *output, size_t output_size);
+void get_song_name(const char *input, char *output, size_t output_size);
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

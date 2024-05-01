@@ -67,7 +67,7 @@ int main()
                     music_loaded = true;
 
                     char song_name[SONG_NAME_CAP];
-                    collect_from_end(files.paths[0], song_name, sizeof(song_name));
+                    get_song_name(files.paths[0], song_name, SONG_NAME_CAP);
                     snprintf(name_text, NAME_TEXT_CAP, "Song name: %s", song_name);
                     PlayMusicStream(music);
                 }
@@ -155,7 +155,7 @@ Vector2 center_text(Vector2 text_size)
     };
 }
 
-void collect_from_end(const char *input, char *output, size_t output_size)
+void get_song_name(const char *input, char *output, size_t output_size)
 {
     size_t input_len = strlen(input);
     size_t out_len = 0;
