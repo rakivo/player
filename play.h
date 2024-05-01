@@ -10,13 +10,14 @@ void collect_from_end(const char *input, char *output, size_t output_size);
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-#define FONT "resources/Alegreya-Regular.ttf"
-
 #ifdef _WIN32
 #   define DELIM '\\'
 #else
 #   define DELIM '/'
 #endif
+
+#define FONT "resources/Alegreya-Regular.ttf"
+#define FONT_SPACING 2.f
 
 #define SCREEN_WIDTH 1000
 #define SCREEN_HEIGHT 600
@@ -31,7 +32,7 @@ void collect_from_end(const char *input, char *output, size_t output_size);
 #define TIME_TEXT_CAP 128
 #define SONG_NAME_CAP 256
 #define NAME_TEXT_CAP 512
-#define MUSIC_EXTENSIONS_CAP 6
+#define SUPPORTED_FORMATS_CAP 6
 
 #define X_CENTER (GetScreenWidth() / 2)
 #define Y_CENTER (GetScreenHeight() / 2)

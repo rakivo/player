@@ -8,7 +8,7 @@
 
 #include "play.h"
 
-const char *MUSIC_EXTENSIONS[MUSIC_EXTENSIONS_CAP] = {
+const char *SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
     ".wav",
     ".ogg",
     ".mp3",
@@ -27,18 +27,17 @@ int main()
 
     Font font = LoadFontEx(FONT, 75, 0, 0);
     const float font_size = (float) font.baseSize;
-    const float font_spacing = 2.f;
     GenTextureMipmaps(&font.texture);
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
 
     char name_text[NAME_TEXT_CAP] = NAME_TEXT_MESSAGE;
-    Vector2 name_text_size = MeasureTextEx(font, name_text, font_size, font_spacing);
+    Vector2 name_text_size = MeasureTextEx(font, name_text, font_size, FONT_SPACING);
     Vector2 name_text_pos = center_text(name_text_size);
     name_text_pos.y += 150;
     name_text_pos.x -= 470;
 
     char time_text[TIME_TEXT_CAP] = TIME_TEXT_MESSAGE;
-    Vector2 time_text_size = MeasureTextEx(font, time_text, font_size, font_spacing);
+    Vector2 time_text_size = MeasureTextEx(font, time_text, font_size, FONT_SPACING);
     Vector2 time_text_pos = center_text(time_text_size);
     time_text_pos.y += 230;
     time_text_pos.x -= 470;
@@ -108,8 +107,8 @@ int main()
 
         BeginDrawing();
             ClearBackground(BACKGROUND_COLOR);
-            DrawTextEx(font, time_text, time_text_pos, font_size, font_spacing, RAYWHITE);
-            DrawTextEx(font, name_text, name_text_pos, font_size, font_spacing, RAYWHITE);
+            DrawTextEx(font, time_text, time_text_pos, font_size, FONT_SPACING, RAYWHITE);
+            DrawTextEx(font, name_text, name_text_pos, font_size, FONT_SPACING, RAYWHITE);
         EndDrawing();
     }
 
@@ -134,8 +133,8 @@ Color rgba(const char* hex)
 
 bool is_music(const char* path)
 {
-    for (size_t i = 0; i < MUSIC_EXTENSIONS_CAP; ++i)
-        if (IsFileExtension(path, MUSIC_EXTENSIONS[i]))
+    for (size_t i = 0; i < SUPPORTED_FORMATS_CAP; ++i)
+        if (IsFileExtension(path, SUPPORTED_FORMATS[i]))
             return true;
 
     return false;
@@ -143,9 +142,9 @@ bool is_music(const char* path)
 
 void supported_extensions()
 {
-    fprintf(stderr, "Supported extensions:\n %s", MUSIC_EXTENSIONS[0]);
-    for (size_t i = 1; i < MUSIC_EXTENSIONS_CAP; ++i)
-        fprintf(stderr, ", %s", MUSIC_EXTENSIONS[i]);
+    fprintf(stderr, "Supported extensions:\n %s", SUPPORTED_FORMATS[0]);
+    for (size_t i = 1; i < SUPPORTED_FORMATS_CAP; ++i)
+        fprintf(stderr, ", %s", SUPPORTED_FORMATS[i]);
 }
 
 Vector2 center_text(Vector2 text_size)
