@@ -29,17 +29,19 @@ int main()
     GenTextureMipmaps(&font.texture);
     SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
 
+    // "Song name: " message
     char name_text[NAME_TEXT_CAP] = NAME_TEXT_MESSAGE;
     Vector2 name_text_size = MeasureTextEx(font, name_text, FONT_SIZE, FONT_SPACING);
     Vector2 name_text_pos = center_text(name_text_size);
     name_text_pos.y += 150;
-    name_text_pos.x -= 470;
+    name_text_pos.x -= 370;
 
+    // "Time played: " message
     char time_text[TIME_TEXT_CAP] = TIME_TEXT_MESSAGE;
     Vector2 time_text_size = MeasureTextEx(font, time_text, FONT_SIZE, FONT_SPACING);
     Vector2 time_text_pos = center_text(time_text_size);
     time_text_pos.y += 230;
-    time_text_pos.x -= 470;
+    time_text_pos.x -= 370;
 
     bool pause = false;
     bool music_loaded = false;
@@ -149,7 +151,7 @@ void supported_extensions()
 Vector2 center_text(Vector2 text_size)
 {
     return (Vector2) {
-        .x = (X_CENTER - (text_size.x / 230)),
+        .x = (X_CENTER - (text_size.x / 2)),
         .y = (Y_CENTER - (text_size.y / 2))
     };
 }
