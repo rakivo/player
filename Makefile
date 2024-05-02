@@ -1,48 +1,20 @@
-CC = cc
-WIN_CC = cl
-WIN_CROSS_CC = x86_64-w64-mingw32-gcc
+CC = clang
+CLIBS = -lm -lraylib -lplug
+CFLAGS = -Wall -Wextra -Werror -pedantic -ggdb -fPIC
+LDFLAGS = -shared
 
-CFLAGS = -Wall -Wextra -Werror -pedantic -ggdb
-CLIBS = -lm -lraylib
+BIN = build/player
+LIB_PLUG = build/libplug.so
 
-BIN = play
-SRC = play.c
-HEADERS = play.h
+.PHONY: clean all
 
-OBJS = main.o
-WIN_OBJS = main.win.o
-WIN_OBJS_CROSS = main.win_cross.o
+all: $(BIN) $(LIB_PLUG)
 
-all: unix objs_clean
+$(BIN): main.c
+	$(CC) $(CFLAGS) -o $@ main.c -L./build/ $(CLIBS)
 
-unix: $(BIN) 
-
-win: $(BIN).exe objs_clean
-
-win_cross: $(BIN)_cross.exe objs_clean
-
-$(BIN): $(OBJS)
-	$(CC) $(CFLAGS) $(CLIBS) $(OBJS) -o $@
-
-$(OBJS): $(SRC) $(HEADERS)
-	$(CC) $(CFLAGS) $(CLIBS)  -c $(SRC) -o $@
-
-$(BIN).exe: $(WIN_OBJS)
-	$(WIN_CC) $(CFLAGS) $(CLIBS) $(WIN_OBJS) -o $@
-
-$(WIN_OBJS): $(SRC) $(HEADERS)
-	$(WIN_CC) $(CFLAGS) $(CLIBS)  -c $(SRC) -o $@
-
-$(BIN)_cross.exe: $(WIN_OBJS_CROSS)
-	$(WIN_CROSS_CC) $(CFLAGS) $(CLIBS) $(WIN_OBJS_CROSS) -o $@
-
-$(WIN_OBJS_CROSS): $(SRC) $(HEADERS)
-	$(WIN_CROSS_CC) $(CFLAGS) $(CLIBS)  -c $(SRC) -o $@
-
-objs_clean:
-	rm -f $(OBJS) $(WIN_OBJS) $(WIN_OBJS_CROSS)
+$(LIB_PLUG): plug.c plug.h
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ plug.c
 
 clean:
-	rm -f $(OBJS) $(WIN_OBJS) $(WIN_OBJS_CROSS) $(BIN) $(BIN).exe $(BIN)_cross.exe
-
-.PHONY: all clean objs_clean
+	rm -f $(LIB_PLUG) $(BIN)
