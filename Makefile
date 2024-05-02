@@ -1,20 +1,25 @@
-CC = clang
-CLIBS = -lm -lraylib -lplug
-CFLAGS = -Wall -Wextra -Werror -pedantic -ggdb -fPIC
+CC = gcc
+
+CLIBS = -lm -lraylib
+CFLAGS = -Wall -Wextra -Werror -pedantic -fPIC
 LDFLAGS = -shared
 
-BIN = build/player
-LIB_PLUG = build/libplug.so
+BIN = build/out
+PLUG_BIN = build/plug
+PLUG_OUT = build/libplug.so
 
-.PHONY: clean all
+.PHONY: clean
 
-all: $(BIN) $(LIB_PLUG)
+all: $(BIN) $(PLUGS) plug_bin_clean
 
-$(BIN): main.c
-	$(CC) $(CFLAGS) -o $@ main.c -L./build/ $(CLIBS)
+$(BIN): src/main.c $(PLUG_OUT)
+	$(CC) $(CFLAGS) $(CLIBS) -o $@ src/main.c
 
-$(LIB_PLUG): plug.c plug.h
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ plug.c
+$(PLUG_OUT): src/plug.c src/plug.h
+	$(CC) $(CFLAGS) $(CLIBS) $(LDFLAGS) -o $@ src/plug.c
+
+plug_bin_clean:
+	rm -f $(PLUG_BIN)
 
 clean:
-	rm -f $(LIB_PLUG) $(BIN)
+	rm -f $(PLUG_OUT) $(BIN) plug_bin_clean

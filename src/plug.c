@@ -50,9 +50,15 @@ void plug_init(Plug* plug)
 
 void plug_update(Plug* plug)
 {
-    printf("`plug_update` called in file: %s\n", __FILE__);
-    plug->font_size = 50.f;
-    printf("`plug_update` successed\n");
+    printf("`plug_update` called\n");
+
+    UnloadFont(plug->font);
+    plug->font_size = 45.f;
+    plug->font_spacing = 2.f;
+
+    plug->font = LoadFontEx(FONT_PATH, plug->font_size, 0, 0);
+    GenTextureMipmaps(&plug->font.texture);
+    SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
 }
 
 void plug_free(Plug* plug)
@@ -114,8 +120,8 @@ void plug_frame(Plug* plug)
 
     BeginDrawing();
         ClearBackground(BACKGROUND_COLOR);
-        DrawTextEx(plug->font, plug->time_text, plug->time_text_pos, plug->font_size, plug->font_spacing, RAYWHITE);
         DrawTextEx(plug->font, plug->name_text, plug->name_text_pos, plug->font_size, plug->font_spacing, RAYWHITE);
+        DrawTextEx(plug->font, plug->time_text, plug->time_text_pos, plug->font_size, plug->font_spacing, RAYWHITE);
     EndDrawing();
 }
 

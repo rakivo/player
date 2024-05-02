@@ -5,7 +5,7 @@
 
 #include "plug.h"
 
-#define LIB_PLUG_PATH "build/libplug.so"
+#define LIB_PLUG_PATH "libplug.so"
 
 void* libplug = NULL;
 
@@ -18,19 +18,14 @@ plug_frame_t plug_frame = NULL;
 
 bool plug_reload(void)
 {
-    if (libplug) {
-        printf("Closing libplug\n");
-        if (dlclose(libplug) != 0) {
-            fprintf(stderr, "dlclose failed: %s\n", dlerror());
-            return false;
-        }
-    }
+    if (libplug) dlclose(libplug);
 
     libplug = dlopen(LIB_PLUG_PATH, RTLD_NOW);
     if (!libplug) {
-        fprintf(stderr, "%s\n", dlerror());
+        TraceLog(LOG_ERROR, "HOTRELOAD: could not load %s: %s", LIB_PLUG_PATH, dlerror());
         return false;
     }
+
     dlerror();
 
     *(void**) (&plug_init)   = dlsym(libplug, "plug_init");
@@ -39,7 +34,7 @@ bool plug_reload(void)
     *(void**) (&plug_frame)  = dlsym(libplug, "plug_frame");
 
     if (!plug_init || !plug_update || !plug_free || !plug_frame) {
-        fprintf(stderr, "Failed to find functions in libplug\n");
+        TraceLog(LOG_ERROR, "Failed to find functions in libplug\n", LIB_PLUG_PATH, dlerror());
         return false;
     }
     
