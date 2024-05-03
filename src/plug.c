@@ -55,14 +55,17 @@ void plug_frame(Plug* plug)
 
     if (IsFileDropped()) {
         FilePathList files = LoadDroppedFiles();
-        if (is_music(files.paths[0])) plug_load_music(plug, files.paths[0]);
+        const char* file_path = files.paths[0];
+        if (!plug_load_music(plug, file_path))
+            TraceLog(LOG_INFO, "File dropped with unknown extension: %s", file_path);
+        
         UnloadDroppedFiles(files);
     }
 
     if (IsKeyPressed(KEY_SPACE)) {
         plug->music.music_paused = !plug->music.music_paused;
         if (plug->music.music_paused) PauseMusicStream(plug->music.music);
-        else                               ResumeMusicStream(plug->music.music);
+        else                          ResumeMusicStream(plug->music.music);
     } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->music.music)) {
         float curr_pos = GetMusicTimePlayed(plug->music.music);
         float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
@@ -133,7 +136,8 @@ void plug_reinit(Plug* plug)
 void plug_init_song_name(Plug* plug, Text_Label* song_name)
 {
     strcpy(song_name->text, NAME_TEXT_MESSAGE);
-    song_name->text_size = MeasureTextEx(plug->font, song_name->text, plug->font_size, plug->font_spacing);
+    song_name->text_size = MeasureTextEx(plug->font, song_name->text,
+                                         plug->font_size, plug->font_spacing);
     
     const int margin_bottom = GetScreenHeight() / 4;
 
@@ -145,7 +149,8 @@ void plug_init_song_name(Plug* plug, Text_Label* song_name)
 void plug_init_song_time(Plug* plug, Text_Label* song_time)
 {
     strcpy(song_time->text, TIME_TEXT_MESSAGE);
-    song_time->text_size = MeasureTextEx(plug->font, song_time->text, plug->font_size, plug->font_spacing);
+    song_time->text_size = MeasureTextEx(plug->font, song_time->text,
+                                         plug->font_size, plug->font_spacing);
 
     const int margin_bottom = GetScreenHeight() / 5.8;
 
@@ -194,7 +199,7 @@ bool plug_load_music(Plug* plug, const char* file_path)
         char song_name[256];
         get_song_name(file_path, song_name, TEXT_CAP);
 
-        TraceLog(LOG_INFO, "SONG_NAME: %s", song_name);
+        TraceLog(LOG_INFO, "Song name: %s", song_name);
         snprintf(plug->song_name.text, TEXT_CAP, "Song name: %s", song_name);
 
         TraceLog(LOG_INFO, "Assigned song_name successfully");
