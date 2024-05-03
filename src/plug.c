@@ -5,20 +5,20 @@
 #include <raylib.h>
 
 #include "plug.h"
-#include "main.h"
 
-const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
+const char *SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
     ".wav",
     ".ogg",
     ".mp3",
     ".qoa",
     ".xm",
-    ".mod"/*,
-    ".flac"*/
+    ".mod"
 };
 
 void plug_init(Plug* plug)
 {
+    plug->background_color = (Color) {24, 24, 24, 255};
+
     plug->font_size = 50.f;
     plug->font_spacing = 2.f;
 
@@ -91,14 +91,21 @@ void plug_frame(Plug* plug)
     }
 
     BeginDrawing();
-        ClearBackground(BACKGROUND_COLOR);
-        DrawTextEx(plug->font, plug->song_name.text,
-                   plug->song_name.text_pos, plug->font_size,
-                   plug->font_spacing, RAYWHITE);
+        ClearBackground(plug->background_color);
 
-        DrawTextEx(plug->font, plug->song_time.text,
-                   plug->song_time.text_pos, plug->font_size,
-                   plug->font_spacing, RAYWHITE);
+        DrawTextEx(plug->font,
+                   plug->song_name.text,
+                   plug->song_name.text_pos,
+                   plug->font_size,
+                   plug->font_spacing,
+                   RAYWHITE);
+
+        DrawTextEx(plug->font,
+                   plug->song_time.text,
+                   plug->song_time.text_pos,
+                   plug->font_size,
+                   plug->font_spacing,
+                   RAYWHITE);
 
         DrawLineEx(plug->seek_track.start_pos,
                    plug->seek_track.end_pos,
@@ -245,8 +252,8 @@ bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
 Vector2 center_text(const Vector2 text_size)
 {
     return (Vector2) {
-        .x = (X_CENTER - (text_size.x / 2)),
-        .y = (Y_CENTER - (text_size.y / 2))
+        .x = ((GetScreenWidth() / 2) - (text_size.x / 2)),
+        .y = ((GetScreenHeight() / 2) - (text_size.y / 2))
     };
 }
 

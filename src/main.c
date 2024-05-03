@@ -9,12 +9,11 @@
 
 #define REINIT
 
-void* libplug = NULL;
-
 Plug plug = {0};
 
-plug_init_t plug_init = NULL;
-plug_free_t plug_free = NULL;
+void* libplug           = NULL;
+plug_init_t plug_init   = NULL;
+plug_free_t plug_free   = NULL;
 plug_frame_t plug_frame = NULL;
 
 bool plug_reload(void)
