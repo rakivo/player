@@ -1,4 +1,4 @@
-CC = gcc
+CC = clang
 
 CLIBS = -lm -lraylib
 CFLAGS = -Wall -Wextra -Werror -pedantic -fPIC

@@ -91,14 +91,21 @@ typedef struct {
 bool is_music(const char*);
 bool is_mouse_on_track(const Vector2, Seek_Track);
 
-void supported_extensions(void);
 void get_song_name(const char*, char*, const size_t);
 
 Vector2 center_text(const Vector2);
 
-// PLUG FUNCTIONS:
+// < =======  + + + ======= >
+
+void plug_handle_keys(Plug*);
+void plug_handle_dropped_files(Plug* plug);
+
+void plug_draw_main_screen(Plug*);
+
 bool plug_load_music(Plug*, const char*);
+
 void plug_reinit(Plug*);
+
 void plug_init_track(Seek_Track*);
 void plug_init_song_name(Plug*, Text_Label*);
 void plug_init_song_time(Plug*, Text_Label*);

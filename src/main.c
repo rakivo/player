@@ -28,23 +28,23 @@ bool plug_reload(void)
 
     dlerror();
 
-    *(void**) (&plug_init)   = dlsym(libplug, "plug_init");
-    *(void**) (&plug_free)   = dlsym(libplug, "plug_free");
-    *(void**) (&plug_frame)  = dlsym(libplug, "plug_frame");
+    *(void**) (&plug_init)  = dlsym(libplug, "plug_init");
+    *(void**) (&plug_free)  = dlsym(libplug, "plug_free");
+    *(void**) (&plug_frame) = dlsym(libplug, "plug_frame");
 
     if (!plug_init || !plug_free || !plug_frame) {
         TraceLog(LOG_ERROR, "Failed to find functions in libplug", LIB_PLUG_PATH, dlerror());
         return false;
     }
     
-    TraceLog(LOG_INFO, "Loaded libplug successfully", LIB_PLUG_PATH, dlerror());
+    TraceLog(LOG_INFO, "Reloaded libplug successfully", LIB_PLUG_PATH, dlerror());
 
     return true;
 }
 
 int main(void)
 {
-    SetTargetFPS(60);
+    SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Play");
     InitAudioDevice();
     SetExitKey(KEY_Q);

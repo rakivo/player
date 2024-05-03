@@ -53,15 +53,41 @@ void plug_frame(Plug* plug)
         }
     }
 
+    plug_handle_keys(plug);
+    plug_handle_dropped_files(plug);
+
+    if (plug->music.music_loaded) {
+        UpdateMusicStream(plug->music.music);
+        plug->music.time_music_played = GetMusicTimePlayed(plug->music.music);
+        snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f seconds",
+                 plug->music.time_music_played);
+
+        plug->music.time_music_check = plug->music.time_music_played /
+                                            GetMusicTimeLength(plug->music.music);
+
+        if (plug->music.time_music_check > 1.0f) plug->music.time_music_check = 1.0f;
+    }
+
+    BeginDrawing();
+        ClearBackground(plug->background_color);
+        plug_draw_main_screen(plug);
+    EndDrawing();
+}
+
+void plug_handle_dropped_files(Plug* plug)
+{
     if (IsFileDropped()) {
         FilePathList files = LoadDroppedFiles();
         const char* file_path = files.paths[0];
         if (!plug_load_music(plug, file_path))
-            TraceLog(LOG_INFO, "File dropped with unknown extension: %s", file_path);
+            TraceLog(LOG_ERROR, "Couldn't play music from file: %s", file_path);
         
         UnloadDroppedFiles(files);
     }
+}
 
+void plug_handle_keys(Plug* plug)
+{
     if (IsKeyPressed(KEY_SPACE)) {
         plug->music.music_paused = !plug->music.music_paused;
         if (plug->music.music_paused) PauseMusicStream(plug->music.music);
@@ -81,47 +107,35 @@ void plug_frame(Plug* plug)
         float future_volume = MAX(plug->music.music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
         SetMusicVolume(plug->music.music, future_volume);
     }
-    
-    if (plug->music.music_loaded) {
-        UpdateMusicStream(plug->music.music);
-        plug->music.time_music_played = GetMusicTimePlayed(plug->music.music);
-        snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f seconds", plug->music.time_music_played);
+}
 
-        plug->music.time_music_check = plug->music.time_music_played /
-                                            GetMusicTimeLength(plug->music.music);
-
-        if (plug->music.time_music_check > 1.0f) plug->music.time_music_check = 1.0f;
-    }
-
-    BeginDrawing();
-        ClearBackground(plug->background_color);
-
-        DrawTextEx(plug->font,
-                   plug->song_name.text,
-                   plug->song_name.text_pos,
-                   plug->font_size,
-                   plug->font_spacing,
-                   RAYWHITE);
-
-        DrawTextEx(plug->font,
-                   plug->song_time.text,
-                   plug->song_time.text_pos,
-                   plug->font_size,
-                   plug->font_spacing,
-                   RAYWHITE);
-
-        DrawLineEx(plug->seek_track.start_pos,
-                   plug->seek_track.end_pos,
-                   plug->seek_track.track_thickness,
-                   plug->seek_track.track_color);
-
-        DrawCircleSector(plug->seek_track.track_cursor.center,
-                         plug->seek_track.track_cursor.radius,
-                         plug->seek_track.track_cursor.start_angle,
-                         plug->seek_track.track_cursor.end_angle,
-                         plug->seek_track.track_cursor.segments,
-                         plug->seek_track.track_cursor.color);
-    EndDrawing();
+void plug_draw_main_screen(Plug* plug)
+{
+    DrawTextEx(plug->font,
+               plug->song_name.text,
+               plug->song_name.text_pos,
+               plug->font_size,
+               plug->font_spacing,
+               RAYWHITE);
+  
+    DrawTextEx(plug->font,
+               plug->song_time.text,
+               plug->song_time.text_pos,
+               plug->font_size,
+               plug->font_spacing,
+               RAYWHITE);
+  
+    DrawLineEx(plug->seek_track.start_pos,
+               plug->seek_track.end_pos,
+               plug->seek_track.track_thickness,
+               plug->seek_track.track_color);
+  
+    DrawCircleSector(plug->seek_track.track_cursor.center,
+                     plug->seek_track.track_cursor.radius,
+                     plug->seek_track.track_cursor.start_angle,
+                     plug->seek_track.track_cursor.end_angle,
+                     plug->seek_track.track_cursor.segments,
+                     plug->seek_track.track_cursor.color);
 }
 
 void plug_reinit(Plug* plug)
@@ -129,7 +143,6 @@ void plug_reinit(Plug* plug)
     plug_init_song_name(plug, &plug->song_name);
     plug_init_song_time(plug, &plug->song_time);
     plug_init_track(&plug->seek_track);
-
     TraceLog(LOG_INFO, "Plug reinitialized successfully");;
 }
 
@@ -178,7 +191,7 @@ void plug_init_track(Seek_Track* seek_track)
         .end_angle = 365,
         .color = YELLOW,
         .radius = 6.f,
-        .segments = 28
+        .segments = 30
     };
 }
 
@@ -260,11 +273,4 @@ Vector2 center_text(const Vector2 text_size)
         .x = ((GetScreenWidth() / 2) - (text_size.x / 2)),
         .y = ((GetScreenHeight() / 2) - (text_size.y / 2))
     };
-}
-
-void supported_extensions(void)
-{
-    fprintf(stderr, "Supported extensions:\n %s", SUPPORTED_FORMATS[0]);
-    for (size_t i = 1; i < SUPPORTED_FORMATS_CAP; ++i)
-        fprintf(stderr, ", %s", SUPPORTED_FORMATS[i]);
 }
