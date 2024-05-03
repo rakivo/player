@@ -26,103 +26,182 @@ void plug_init(Plug* plug)
     GenTextureMipmaps(&plug->font.texture);
     SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
 
-    plug->name_text_size = MeasureTextEx(plug->font, plug->name_text, plug->font_size, plug->font_spacing);
-    plug->name_text_pos = center_text(plug->name_text_size);
-    plug->name_text_pos.y += 150;
-    plug->name_text_pos.x -= 450;
+    plug_init_track(&plug->seek_track);
+    plug_init_song_name(plug, &plug->song_name);
+    plug_init_song_time(plug, &plug->song_time);
 
-    plug->time_text_size = MeasureTextEx(plug->font, plug->time_text, plug->font_size, plug->font_spacing);
-    plug->time_text_pos = center_text(plug->time_text_size);
-    plug->time_text_pos.y += 230;
-    plug->time_text_pos.x -= 450;
+    plug->music.time_music_played = 0.f;
+    plug->music.time_music_check = 0.f;
 
-    plug->time_played = 0.f;
-    plug->time_check = 0.f;
+    plug->music.music_paused = false;
+    plug->music.music_loaded = false;
 
-    strcpy(plug->name_text, NAME_TEXT_MESSAGE);
-    strcpy(plug->time_text, TIME_TEXT_MESSAGE);
-
-    plug->pause = false;
-    plug->music_loaded = false;
-
-    plug->music = (Music) {0};
+    plug->music.music = (Music) {0};
 }
 
-void plug_update(Plug* plug)
+void plug_frame(Plug* plug)
 {
-    printf("`plug_update` called\n");
+    if (IsWindowResized()) plug_reinit(plug);
 
-    UnloadFont(plug->font);
-    plug->font_size = 45.f;
-    plug->font_spacing = 2.f;
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        Vector2 mouse_pos = GetMousePosition();
 
-    plug->font = LoadFontEx(FONT_PATH, plug->font_size, 0, 0);
-    GenTextureMipmaps(&plug->font.texture);
-    SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
+        if (is_mouse_on_track(mouse_pos, plug->seek_track)) {
+            TraceLog(LOG_INFO, "Track Start pos x: %f, y: %f", plug->seek_track.start_pos.x, plug->seek_track.start_pos.y);
+            TraceLog(LOG_INFO, "Track End pos x: %f, y: %f", plug->seek_track.end_pos.x, plug->seek_track.end_pos.y);
+            TraceLog(LOG_INFO, "Mouse clicked on the track at x: %f, y: %f", mouse_pos.x, mouse_pos.y);
+        }
+    }
+
+    if (IsFileDropped()) {
+        FilePathList files = LoadDroppedFiles();
+        if (is_music(files.paths[0])) plug_load_music(plug, files.paths[0]);
+        UnloadDroppedFiles(files);
+    }
+
+    if (IsKeyPressed(KEY_SPACE)) {
+        plug->music.music_paused = !plug->music.music_paused;
+        if (plug->music.music_paused) PauseMusicStream(plug->music.music);
+        else                               ResumeMusicStream(plug->music.music);
+    } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->music.music)) {
+        float curr_pos = GetMusicTimePlayed(plug->music.music);
+        float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
+        SeekMusicStream(plug->music.music, future_pos);
+    } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->music.music)) {
+        float curr_pos = GetMusicTimePlayed(plug->music.music);
+        float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->music.music));
+        SeekMusicStream(plug->music.music, future_pos);
+    } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->music.music)) {
+        float future_volume = MIN(plug->music.music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
+        SetMusicVolume(plug->music.music, future_volume);
+    } else if (IsKeyPressed(KEY_DOWN) && IsMusicStreamPlaying(plug->music.music)) {
+        float future_volume = MAX(plug->music.music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
+        SetMusicVolume(plug->music.music, future_volume);
+    }
+    
+    if (plug->music.music_loaded) {
+        UpdateMusicStream(plug->music.music);
+        plug->music.time_music_played = GetMusicTimePlayed(plug->music.music);
+        snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f seconds", plug->music.time_music_played);
+
+        plug->music.time_music_check = plug->music.time_music_played /
+                                            GetMusicTimeLength(plug->music.music);
+
+        if (plug->music.time_music_check > 1.0f) plug->music.time_music_check = 1.0f;
+    }
+
+    BeginDrawing();
+        ClearBackground(BACKGROUND_COLOR);
+        DrawTextEx(plug->font, plug->song_name.text,
+                   plug->song_name.text_pos, plug->font_size,
+                   plug->font_spacing, RAYWHITE);
+
+        DrawTextEx(plug->font, plug->song_time.text,
+                   plug->song_time.text_pos, plug->font_size,
+                   plug->font_spacing, RAYWHITE);
+
+        DrawLineEx(plug->seek_track.start_pos,
+                   plug->seek_track.end_pos,
+                   plug->seek_track.track_thickness,
+                   plug->seek_track.track_color);
+
+        DrawCircleSector(plug->seek_track.track_cursor.center,
+                         plug->seek_track.track_cursor.radius,
+                         plug->seek_track.track_cursor.start_angle,
+                         plug->seek_track.track_cursor.end_angle,
+                         plug->seek_track.track_cursor.segments,
+                         plug->seek_track.track_cursor.color);
+    EndDrawing();
+}
+
+void plug_reinit(Plug* plug)
+{
+    plug_init_song_name(plug, &plug->song_name);
+    plug_init_song_time(plug, &plug->song_time);
+    plug_init_track(&plug->seek_track);
+
+    TraceLog(LOG_INFO, "Plug reinitialized successfully");;
+}
+
+void plug_init_song_name(Plug* plug, Text_Label* song_name)
+{
+    strcpy(song_name->text, NAME_TEXT_MESSAGE);
+    song_name->text_size = MeasureTextEx(plug->font, song_name->text, plug->font_size, plug->font_spacing);
+    
+    const int margin_bottom = GetScreenHeight() / 4;
+
+    song_name->text_pos = center_text(song_name->text_size);
+    song_name->text_pos.y = GetScreenHeight() - margin_bottom;
+    song_name->text_pos.x /= 15;
+}
+
+void plug_init_song_time(Plug* plug, Text_Label* song_time)
+{
+    strcpy(song_time->text, TIME_TEXT_MESSAGE);
+    song_time->text_size = MeasureTextEx(plug->font, song_time->text, plug->font_size, plug->font_spacing);
+
+    const int margin_bottom = GetScreenHeight() / 5.8;
+
+    song_time->text_pos = center_text(song_time->text_size);
+    song_time->text_pos.y = GetScreenHeight() - margin_bottom;
+    song_time->text_pos.x /= 15;
+}
+
+void plug_init_track(Seek_Track* seek_track)
+{
+    seek_track->track_margin_bottom = GetScreenHeight() / 15;
+    seek_track->track_thickness = 5.f;
+    seek_track->track_color = RED;
+    seek_track->start_pos = (Vector2) {
+        .x = 0,
+        .y = GetScreenHeight() - seek_track->track_margin_bottom
+    };
+    seek_track->end_pos = (Vector2) {
+        .x = GetScreenWidth(),
+        .y = GetScreenHeight() - seek_track->track_margin_bottom
+    };
+    seek_track->track_cursor = (Track_Cursor) {
+        .center = seek_track->start_pos,
+        .start_angle = 0,
+        .end_angle = 365,
+        .color = YELLOW,
+        .radius = 6.f,
+        .segments = 28
+    };
+}
+
+bool plug_load_music(Plug* plug, const char* file_path)
+{
+    if (!is_music(file_path)) return false;
+    if (IsMusicStreamPlaying(plug->music.music)) {
+        StopMusicStream(plug->music.music);
+        UnloadMusicStream(plug->music.music);
+    }
+
+    plug->music.music = LoadMusicStream(file_path);
+    SetMusicVolume(plug->music.music, DEFAULT_MUSIC_VOLUME);
+
+    if (plug->music.music.frameCount != 0) {
+        plug->music.music_loaded = true;
+
+        char song_name[256];
+        get_song_name(file_path, song_name, TEXT_CAP);
+
+        TraceLog(LOG_INFO, "SONG_NAME: %s", song_name);
+        snprintf(plug->song_name.text, TEXT_CAP, "Song name: %s", song_name);
+
+        TraceLog(LOG_INFO, "Assigned song_name successfully");
+        PlayMusicStream(plug->music.music);
+
+        return true;
+    } else return false;
 }
 
 void plug_free(Plug* plug)
 {
     UnloadFont(plug->font);
-    if (IsMusicStreamPlaying(plug->music)) UnloadMusicStream(plug->music);
-    plug->music_loaded = false;
-}
-
-void plug_frame(Plug* plug)
-{
-    if (IsFileDropped()) {
-        FilePathList files = LoadDroppedFiles();
-        if (is_music(files.paths[0])) {
-            if (plug->music_loaded) {
-                StopMusicStream(plug->music);
-                UnloadMusicStream(plug->music);
-            }
-
-            plug->music = LoadMusicStream(files.paths[0]);
-            SetMusicVolume(plug->music, DEFAULT_MUSIC_VOLUME);
-
-            if (plug->music.frameCount != 0) {
-                plug->music_loaded = true;
-
-                char song_name[SONG_NAME_CAP];
-                get_song_name(files.paths[0], song_name, SONG_NAME_CAP);
-                snprintf(plug->name_text, NAME_TEXT_CAP, "Song name: %s", song_name);
-                PlayMusicStream(plug->music);
-            }
-        }
-        UnloadDroppedFiles(files);
-    }
-
-    if (IsKeyPressed(KEY_SPACE)) {
-        plug->pause = !plug->pause;
-        if (plug->pause) PauseMusicStream(plug->music);
-        else       ResumeMusicStream(plug->music);
-    } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->music)) {
-        float curr_pos = GetMusicTimePlayed(plug->music);
-        float future_pos = MAX(curr_pos - DEFAULT_MUSIC_STEP,
-                               0.0);
-        SeekMusicStream(plug->music, future_pos);
-    } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->music)) {
-        float curr_pos = GetMusicTimePlayed(plug->music);
-        float future_pos = MIN(curr_pos + DEFAULT_MUSIC_STEP,
-                               GetMusicTimeLength(plug->music));
-        SeekMusicStream(plug->music, future_pos);
-    }
-    
-    if (plug->music_loaded) {
-        UpdateMusicStream(plug->music);
-        plug->time_played = GetMusicTimePlayed(plug->music);
-        snprintf(plug->time_text, TIME_TEXT_CAP, "Time played: %.1f seconds", plug->time_played);
-
-        plug->time_check = plug->time_played / GetMusicTimeLength(plug->music);
-        if (plug->time_check > 1.0f) plug->time_check = 1.0f;
-    }
-
-    BeginDrawing();
-        ClearBackground(BACKGROUND_COLOR);
-        DrawTextEx(plug->font, plug->name_text, plug->name_text_pos, plug->font_size, plug->font_spacing, RAYWHITE);
-        DrawTextEx(plug->font, plug->time_text, plug->time_text_pos, plug->font_size, plug->font_spacing, RAYWHITE);
-    EndDrawing();
+    if (IsMusicStreamPlaying(plug->music.music)) UnloadMusicStream(plug->music.music);
+    plug->music.music_loaded = false;
 }
 
 void get_song_name(const char* input, char* output, const size_t output_size)
@@ -145,17 +224,6 @@ void get_song_name(const char* input, char* output, const size_t output_size)
     }
 }
 
-Color rgba(const char* hex)
-{
-    Color ret = {0, 0, 0, 255};
-
-    ret.r = (strtol(hex + 1, NULL, 16) >> 16) & 0xFF;
-    ret.g = (strtol(hex + 1, NULL, 16) >> 8)  & 0xFF;
-    ret.b = (strtol(hex + 1, NULL, 16) >> 0)  & 0xFF;
-
-    return ret;
-}
-
 bool is_music(const char* path)
 {
     for (size_t i = 0; i < SUPPORTED_FORMATS_CAP; ++i)
@@ -163,6 +231,15 @@ bool is_music(const char* path)
             return true;
 
     return false;
+}
+
+bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
+{
+    const float track_padding = seek_track.track_thickness * 2;
+
+    return (mouse_pos.x >= seek_track.start_pos.x) && (mouse_pos.x <= seek_track.end_pos.x) &&
+           (mouse_pos.y >= (seek_track.start_pos.y - seek_track.track_thickness - track_padding)) && 
+           (mouse_pos.y <= (seek_track.end_pos.y + seek_track.track_thickness + track_padding));
 }
 
 Vector2 center_text(const Vector2 text_size)

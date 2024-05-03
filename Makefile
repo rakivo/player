@@ -15,7 +15,7 @@ all: $(BIN) $(PLUGS) plug_bin_clean
 $(BIN): src/main.c $(PLUG_OUT)
 	$(CC) $(CFLAGS) $(CLIBS) -o $@ src/main.c
 
-$(PLUG_OUT): src/plug.c src/plug.h
+$(PLUG_OUT): src/plug.c src/plug.h src/main.h
 	$(CC) $(CFLAGS) $(CLIBS) $(LDFLAGS) -o $@ src/plug.c
 
 plug_bin_clean:

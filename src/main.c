@@ -7,12 +7,13 @@
 
 #define LIB_PLUG_PATH "libplug.so"
 
+#define REINIT
+
 void* libplug = NULL;
 
 Plug plug = {0};
 
 plug_init_t plug_init = NULL;
-plug_update_t plug_update = NULL;
 plug_free_t plug_free = NULL;
 plug_frame_t plug_frame = NULL;
 
@@ -29,16 +30,15 @@ bool plug_reload(void)
     dlerror();
 
     *(void**) (&plug_init)   = dlsym(libplug, "plug_init");
-    *(void**) (&plug_update) = dlsym(libplug, "plug_update");
     *(void**) (&plug_free)   = dlsym(libplug, "plug_free");
     *(void**) (&plug_frame)  = dlsym(libplug, "plug_frame");
 
-    if (!plug_init || !plug_update || !plug_free || !plug_frame) {
-        TraceLog(LOG_ERROR, "Failed to find functions in libplug\n", LIB_PLUG_PATH, dlerror());
+    if (!plug_init || !plug_free || !plug_frame) {
+        TraceLog(LOG_ERROR, "Failed to find functions in libplug", LIB_PLUG_PATH, dlerror());
         return false;
     }
     
-    printf("Loaded libplug successfully\n");
+    TraceLog(LOG_INFO, "Loaded libplug successfully", LIB_PLUG_PATH, dlerror());
 
     return true;
 }
@@ -46,7 +46,7 @@ bool plug_reload(void)
 int main(void)
 {
     SetTargetFPS(60);
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Play");
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Play");
     InitAudioDevice();
     SetExitKey(KEY_Q);
 
@@ -56,7 +56,9 @@ int main(void)
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_R)) {
             if (!plug_reload()) return 1;
-            plug_update(&plug);
+#ifdef REINIT
+            plug_init(&plug);
+#endif
         }
         plug_frame(&plug);
     }
