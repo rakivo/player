@@ -98,7 +98,7 @@ Vector2 center_text(const Vector2);
 // < =======  + + + ======= >
 
 void plug_handle_keys(Plug*);
-void plug_handle_dropped_files(Plug* plug);
+void plug_handle_dropped_files(Plug*);
 
 void plug_draw_main_screen(Plug*);
 
@@ -110,8 +110,8 @@ void plug_init_track(Seek_Track*);
 void plug_init_song_name(Plug*, Text_Label*);
 void plug_init_song_time(Plug*, Text_Label*);
 
-typedef void (*plug_init_t)(Plug* plug);
-typedef void (*plug_free_t)(Plug* plug);
-typedef void (*plug_frame_t)(Plug* plug);
+typedef void (*plug_init_t)(Plug*);
+typedef void (*plug_free_t)(Plug*);
+typedef void (*plug_frame_t)(Plug*);
 
 #endif // PLUG_H
