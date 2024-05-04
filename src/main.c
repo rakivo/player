@@ -11,10 +11,11 @@ const bool REINIT = 0;
 
 Plug plug = {0};
 
-void* libplug           = NULL;
-plug_init_t plug_init   = NULL;
-plug_free_t plug_free   = NULL;
-plug_frame_t plug_frame = NULL;
+void* libplug;
+
+plug_init_t plug_init;
+plug_free_t plug_free;
+plug_frame_t plug_frame;
 
 bool plug_reload(void)
 {
@@ -32,11 +33,11 @@ bool plug_reload(void)
     *(void**) (&plug_frame) = dlsym(libplug, "plug_frame");
 
     if (!plug_init || !plug_free || !plug_frame) {
-        TraceLog(LOG_ERROR, "Failed to find functions in libplug", LIB_PLUG_PATH, dlerror());
+        TraceLog(LOG_ERROR, "Failed to find functions in %s: %s", LIB_PLUG_PATH, dlerror());
         return false;
     }
     
-    TraceLog(LOG_INFO, "Reloaded libplug successfully", LIB_PLUG_PATH, dlerror());
+    TraceLog(LOG_INFO, "Reloaded libplug successfully");
 
     return true;
 }
@@ -44,7 +45,7 @@ bool plug_reload(void)
 int main(void)
 {
     SetTargetFPS(60);
-    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Play");
+    InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Player");
     InitAudioDevice();
     SetExitKey(KEY_Q);
     SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));

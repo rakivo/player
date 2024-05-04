@@ -11,7 +11,7 @@
     Work on color palette in the app.
 */
 
-const char *SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
+const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
     ".xm",
     ".wav",
     ".ogg",
@@ -32,15 +32,15 @@ void plug_init(Plug* plug)
     SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
 
     plug_init_waiting_for_file_msg(plug);
-    plug_init_track(&plug->seek_track);
+    plug_init_track(plug, true);
     plug_init_song_name(plug, true);
     plug_init_song_time(plug, true);
     plug_init_popup_msg(plug);
 
     plug->app_state = WAITING_FOR_FILE;
 
-    plug->music.time_music_played = 0.f;
-    plug->music.time_music_check = 0.f;
+    plug->music.time_played = 0.f;
+    plug->music.time_check = 0.f;
 }
 
 void plug_frame(Plug* plug)
@@ -54,27 +54,28 @@ void plug_frame(Plug* plug)
         plug_handle_buttons(plug);
     }
 
-    if (plug->music.music_loaded && plug->app_state == MAIN_SCREEN) {
+    if (plug->music.loaded && plug->app_state == MAIN_SCREEN) {
         UpdateMusicStream(plug->music.music);
 
-        plug->music.time_music_played = GetMusicTimePlayed(plug->music.music);
+        plug->music.time_played = GetMusicTimePlayed(plug->music.music);
 
         snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f / %.1f seconds",
-                 plug->music.time_music_played, plug->music.music_length);
+                 plug->music.time_played, plug->music.length);
 
-        // Seek track
+        // Seek track cursor
         {
-            const float position = plug->music.time_music_played
-                / plug->music.music_length
-                * GetScreenWidth();
+            const float position = plug->music.time_played
+                / plug->music.length
+                * (plug->seek_track.end_pos.x
+                 - plug->seek_track.start_pos.x);
     
-            plug->seek_track.track_cursor.center.x = position;
+            plug->seek_track.cursor.center.x = position + plug->seek_track.start_pos.x;
         }
 
-        plug->music.time_music_check = plug->music.time_music_played
-            / plug->music.music_length;
+        plug->music.time_check = plug->music.time_played
+            / plug->music.length;
 
-        if (plug->music.time_music_check > 1.f) plug->music.time_music_check = 1.f;
+        if (plug->music.time_check > 1.f) plug->music.time_check = 1.f;
     }
 
     BeginDrawing();
@@ -121,18 +122,17 @@ void plug_draw_main_screen(Plug* plug)
         } else plug->show_popup_msg = false;
     }
 
-
     DrawLineEx(plug->seek_track.start_pos,
                plug->seek_track.end_pos,
-               plug->seek_track.track_thickness,
-               plug->seek_track.track_color);
+               plug->seek_track.thickness,
+               plug->seek_track.color);
   
-    DrawCircleSector(plug->seek_track.track_cursor.center,
-                     plug->seek_track.track_cursor.radius,
-                     plug->seek_track.track_cursor.start_angle,
-                     plug->seek_track.track_cursor.end_angle,
-                     plug->seek_track.track_cursor.segments,
-                     plug->seek_track.track_cursor.color);
+    DrawCircleSector(plug->seek_track.cursor.center,
+                     plug->seek_track.cursor.radius,
+                     plug->seek_track.cursor.start_angle,
+                     plug->seek_track.cursor.end_angle,
+                     plug->seek_track.cursor.segments,
+                     plug->seek_track.cursor.color);
 }
 
 void plug_handle_dropped_files(Plug* plug)
@@ -158,11 +158,12 @@ void plug_handle_buttons(Plug* plug)
             TraceLog(LOG_INFO, "Mouse clicked on the track at x: %f, y: %f", mouse_pos.x, mouse_pos.y);
 
             if (IsMusicStreamPlaying(plug->music.music)) {
-                plug->seek_track.track_cursor.center.x = mouse_pos.x;
+                plug->seek_track.cursor.center.x = mouse_pos.x;
 
-                const float position = mouse_pos.x
-                    / GetScreenWidth()
-                    * plug->music.music_length;
+                const float position = (mouse_pos.x
+                    - plug->seek_track.start_pos.x)
+                    / (plug->seek_track.end_pos.x - plug->seek_track.start_pos.x)
+                    * plug->music.length;
 
                 SeekMusicStream(plug->music.music, position);
             }
@@ -173,39 +174,35 @@ void plug_handle_buttons(Plug* plug)
 void plug_handle_keys(Plug* plug)
 {
     if (IsKeyPressed(KEY_SPACE)) {
-        plug->music.music_paused = !plug->music.music_paused;
-        if (plug->music.music_paused) PauseMusicStream(plug->music.music);
+        plug->music.paused = !plug->music.paused;
+        if (plug->music.paused) PauseMusicStream(plug->music.music);
         else                          ResumeMusicStream(plug->music.music);
     } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->music.music)) {
         float curr_pos = GetMusicTimePlayed(plug->music.music);
         float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        snprintf(plug->popup_msg.text, TEXT_CAP,
-                     "- %.1f", DEFAULT_MUSIC_SEEK_STEP);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
         SeekMusicStream(plug->music.music, future_pos);
     } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->music.music)) {
         float curr_pos = GetMusicTimePlayed(plug->music.music);
         float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->music.music));
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        snprintf(plug->popup_msg.text, TEXT_CAP,
-                     "+ %.1f", DEFAULT_MUSIC_SEEK_STEP);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
         SeekMusicStream(plug->music.music, future_pos);
     } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->music.music)) {
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        plug->music.music_volume = MIN(plug->music.music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
-        snprintf(plug->popup_msg.text, TEXT_CAP,
-                     "+ %.1f", DEFAULT_MUSIC_VOLUME_STEP);
-        SetMusicVolume(plug->music.music, plug->music.music_volume);
+        plug->music.volume = MIN(plug->music.volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
+        SetMusicVolume(plug->music.music, plug->music.volume);
     } else if (IsKeyPressed(KEY_DOWN) && IsMusicStreamPlaying(plug->music.music)) {
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        plug->music.music_volume = MAX(plug->music.music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
-        snprintf(plug->popup_msg.text, TEXT_CAP,
-                 "- %.1f", DEFAULT_MUSIC_VOLUME_STEP);
-        SetMusicVolume(plug->music.music, plug->music.music_volume);
+        plug->music.volume = MAX(plug->music.volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
+        SetMusicVolume(plug->music.music, plug->music.volume);
     }
 }
 
@@ -214,15 +211,7 @@ void plug_reinit(Plug* plug)
     plug_init_popup_msg(plug);
     plug_init_song_name(plug, false);
     plug_init_song_time(plug, false);
-
-    // Seek track
-    {
-        const float track_y_pos = GetScreenHeight() - plug->seek_track.track_margin_bottom;
-        plug->seek_track.end_pos.x = GetScreenWidth();
-        plug->seek_track.end_pos.y = track_y_pos;
-        plug->seek_track.track_cursor.center.y = track_y_pos;
-        plug->seek_track.start_pos.y = track_y_pos;
-    }
+    plug_init_track(plug, false);
 }
 
 void plug_init_waiting_for_file_msg(Plug* plug)
@@ -264,32 +253,34 @@ void plug_init_song_time(Plug* plug, bool cpydef)
 void plug_init_popup_msg(Plug* plug)
 {
     plug->popup_msg.text_size = MeasureTextEx(plug->font, "- 0.1  ",
-                                             plug->font_size, plug->font_spacing);
+                                              plug->font_size, plug->font_spacing);
 
     plug->popup_msg.text_pos = center_text(plug->popup_msg.text_size);
 }
 
-void plug_init_track(Seek_Track* seek_track)
+void plug_init_track(Plug* plug, bool cpydef)
 {
-    seek_track->track_margin_bottom = GetScreenHeight() / 15;
-    seek_track->track_thickness = 5.f;
-    seek_track->track_color = RED;
-    seek_track->start_pos = (Vector2) {
-        .x = 0,
-        .y = GetScreenHeight() - seek_track->track_margin_bottom
+    plug->seek_track.track_margin_bottom = GetScreenHeight() / 13;
+    plug->seek_track.thickness = 5.f;
+    plug->seek_track.color = (Color) { 86, 205, 234, 255 };
+    plug->seek_track.start_pos = (Vector2) {
+        .x = GetScreenWidth() / 20,
+        .y = GetScreenHeight() - plug->seek_track.track_margin_bottom
     };
-    seek_track->end_pos = (Vector2) {
-        .x = GetScreenWidth(),
-        .y = GetScreenHeight() - seek_track->track_margin_bottom
+    plug->seek_track.end_pos = (Vector2) {
+        .x = GetScreenWidth() - GetScreenWidth() / 20,
+        .y = GetScreenHeight() - plug->seek_track.track_margin_bottom
     };
-    seek_track->track_cursor = (Track_Cursor) {
-        .center = seek_track->start_pos,
-        .start_angle = 0,
-        .end_angle = 365,
-        .color = YELLOW,
-        .radius = 6.f,
-        .segments = 30
-    };
+    if (cpydef) {
+        plug->seek_track.cursor = (Track_Cursor) {
+            .center = plug->seek_track.start_pos,
+            .start_angle = 0,
+            .end_angle = 365,
+            .color = WHITE,
+            .radius = 6.f,
+            .segments = 30
+        };
+    }
 }
 
 bool plug_load_music(Plug* plug, const char* file_path)
@@ -306,18 +297,15 @@ bool plug_load_music(Plug* plug, const char* file_path)
     if (plug->music.music.frameCount != 0) {
         plug->app_state = MAIN_SCREEN;
 
-        plug->music.music_length = GetMusicTimeLength(plug->music.music);
-        plug->music.music_loaded = true;
+        plug->music.length = GetMusicTimeLength(plug->music.music);
+        plug->music.loaded = true;
 
         char song_name[256];
         get_song_name(file_path, song_name, TEXT_CAP);
 
         snprintf(plug->song_name.text, TEXT_CAP, "Song name: %s", song_name);
-        TraceLog(LOG_INFO, plug->song_name.text);
-
-        TraceLog(LOG_INFO, "Assigned song_name successfully");
+        TraceLog(LOG_INFO, "Assigned song_name successfully: %s", plug->song_name.text);
         PlayMusicStream(plug->music.music);
-
         return true;
     } else return false;
 }
@@ -326,7 +314,7 @@ void plug_free(Plug* plug)
 {
     UnloadFont(plug->font);
     if (IsMusicStreamPlaying(plug->music.music)) UnloadMusicStream(plug->music.music);
-    plug->music.music_loaded = false;
+    plug->music.loaded = false;
 }
 
 void get_song_name(const char* input, char* output, const size_t output_size)
@@ -334,12 +322,9 @@ void get_song_name(const char* input, char* output, const size_t output_size)
     size_t input_len = strlen(input);
     size_t out_len = 0;
 
-    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i) {
-        if (out_len < output_size - 1) {
-            output[out_len] = input[i];
-            out_len++;
-        }
-    }
+    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i)
+        if (out_len < output_size - 1)
+            output[out_len++] = input[i];
 
     output[out_len] = '\0';
     for (size_t i = 0; i < out_len / 2; i++) {
@@ -360,11 +345,10 @@ bool is_music(const char* path)
 
 bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
 {
-    const float track_padding = seek_track.track_thickness * 2;
-
+    const float track_padding = seek_track.thickness * 2;
     return (mouse_pos.x >= seek_track.start_pos.x) && (mouse_pos.x <= seek_track.end_pos.x) &&
-           (mouse_pos.y >= (seek_track.start_pos.y - seek_track.track_thickness - track_padding)) && 
-           (mouse_pos.y <= (seek_track.end_pos.y + seek_track.track_thickness + track_padding));
+           (mouse_pos.y >= (seek_track.start_pos.y - seek_track.thickness - track_padding)) && 
+           (mouse_pos.y <= (seek_track.end_pos.y + seek_track.thickness + track_padding));
 }
 
 Vector2 center_text(const Vector2 text_size)

@@ -52,26 +52,27 @@ typedef struct {
 
 typedef struct {
     int track_margin_bottom;
+    int track_margin_sides;
 
-    float track_thickness;
+    float thickness;
 
-    Color track_color;
+    Color color;
 
-    Track_Cursor track_cursor;
+    Track_Cursor cursor;
 
     Vector2 start_pos;
     Vector2 end_pos;
 } Seek_Track;
 
 typedef struct {
-    bool music_loaded;
-    bool music_paused;
+    bool loaded;
+    bool paused;
 
-    float music_volume;
-    float music_length;
+    float volume;
+    float length;
 
-    float time_music_played;
-    float time_music_check;
+    float time_played;
+    float time_check;
 
     Music music;
 } Plug_Music;
@@ -125,7 +126,7 @@ bool plug_load_music(Plug*, const char*);
 void plug_reinit(Plug*);
 
 void plug_init_popup_msg(Plug*);
-void plug_init_track(Seek_Track*);
+void plug_init_track(Plug*, bool);
 void plug_init_song_name(Plug*, bool);
 void plug_init_song_time(Plug*, bool);
 void plug_init_waiting_for_file_msg(Plug*);
