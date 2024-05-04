@@ -180,29 +180,29 @@ void plug_handle_keys(Plug* plug)
     } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->music.music)) {
         float curr_pos = GetMusicTimePlayed(plug->music.music);
         float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
+        SeekMusicStream(plug->music.music, future_pos);
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
         snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
-        SeekMusicStream(plug->music.music, future_pos);
     } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->music.music)) {
         float curr_pos = GetMusicTimePlayed(plug->music.music);
         float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->music.music));
+        SeekMusicStream(plug->music.music, future_pos);
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
         snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
-        SeekMusicStream(plug->music.music, future_pos);
     } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->music.music)) {
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
         plug->music.volume = MIN(plug->music.volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
-        snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         SetMusicVolume(plug->music.music, plug->music.volume);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
     } else if (IsKeyPressed(KEY_DOWN) && IsMusicStreamPlaying(plug->music.music)) {
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
         plug->music.volume = MAX(plug->music.volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
-        snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         SetMusicVolume(plug->music.music, plug->music.volume);
+        snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
     }
 }
 
@@ -280,7 +280,7 @@ void plug_init_track(Plug* plug, bool cpydef)
             .radius = 6.f,
             .segments = 30
         };
-    }
+    } else plug->seek_track.cursor.center.y = plug->seek_track.start_pos.y;
 }
 
 bool plug_load_music(Plug* plug, const char* file_path)
