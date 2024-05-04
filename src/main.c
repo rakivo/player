@@ -7,7 +7,7 @@
 
 #define LIB_PLUG_PATH "libplug.so"
 
-#define REINIT
+const bool REINIT = 0;
 
 Plug plug = {0};
 
@@ -25,7 +25,6 @@ bool plug_reload(void)
         TraceLog(LOG_ERROR, "HOTRELOAD: could not load %s: %s", LIB_PLUG_PATH, dlerror());
         return false;
     }
-
     dlerror();
 
     *(void**) (&plug_init)  = dlsym(libplug, "plug_init");
@@ -44,10 +43,11 @@ bool plug_reload(void)
 
 int main(void)
 {
-    SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
+    SetTargetFPS(60);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Play");
     InitAudioDevice();
     SetExitKey(KEY_Q);
+    SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
     if (!plug_reload()) return 1;
     plug_init(&plug);
@@ -55,9 +55,7 @@ int main(void)
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_R)) {
             if (!plug_reload()) return 1;
-#ifdef REINIT
-            plug_init(&plug);
-#endif
+            if (REINIT) plug_init(&plug);
         }
         plug_frame(&plug);
     }

@@ -18,15 +18,18 @@
 
 #define FONT_PATH "../resources/Alegreya-Regular.ttf"
 
+#define WAITING_MESSAGE   "Drop music file to play music"
 #define NAME_TEXT_MESSAGE "Song name: "
 #define TIME_TEXT_MESSAGE "Time played: "
 
 #define DEFAULT_MUSIC_SEEK_STEP 5.f
 #define DEFAULT_MUSIC_VOLUME_STEP .1
-#define DEFAULT_MUSIC_VOLUME 0.1
+#define DEFAULT_MUSIC_VOLUME .1
 
 #define TEXT_CAP 512
 #define SUPPORTED_FORMATS_CAP 6
+
+#define SONG_VOLUME_MSG_DURATION 1.f
 
 typedef struct {
     char text[TEXT_CAP];
@@ -65,6 +68,7 @@ typedef struct {
     bool music_paused;
 
     float music_volume;
+    float music_length;
 
     float time_music_played;
     float time_music_check;
@@ -72,7 +76,14 @@ typedef struct {
     Music music;
 } Plug_Music;
 
+enum App_State {
+    WAITING_FOR_FILE,
+    MAIN_SCREEN
+};
+
 typedef struct {
+    enum App_State app_state;
+
     Color background_color;
 
     float font_size;
@@ -82,8 +93,13 @@ typedef struct {
 
     Seek_Track seek_track;
 
+    Text_Label waiting_for_file_msg;
     Text_Label song_name;
     Text_Label song_time;
+    Text_Label popup_msg;
+
+    bool show_popup_msg;
+    float popup_msg_start_time;
 
     Plug_Music music;
 } Plug;
@@ -98,17 +114,21 @@ Vector2 center_text(const Vector2);
 // < =======  + + + ======= >
 
 void plug_handle_keys(Plug*);
+void plug_handle_buttons(Plug*);
 void plug_handle_dropped_files(Plug*);
 
 void plug_draw_main_screen(Plug*);
+void plug_draw_waiting_for_file_screen(Plug*);
 
 bool plug_load_music(Plug*, const char*);
 
 void plug_reinit(Plug*);
 
+void plug_init_popup_msg(Plug*);
 void plug_init_track(Seek_Track*);
-void plug_init_song_name(Plug*, Text_Label*);
-void plug_init_song_time(Plug*, Text_Label*);
+void plug_init_song_name(Plug*, bool);
+void plug_init_song_time(Plug*, bool);
+void plug_init_waiting_for_file_msg(Plug*);
 
 typedef void (*plug_init_t)(Plug*);
 typedef void (*plug_free_t)(Plug*);
