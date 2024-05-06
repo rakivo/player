@@ -64,18 +64,45 @@ typedef struct {
     Vector2 end_pos;
 } Seek_Track;
 
-typedef struct {
-    bool loaded;
-    bool paused;
+#define VM_INIT_CAP 256
 
-    float volume;
+#define VM_FOREACH(item, vec)                                                   \
+    for(int keep = 1,                                                           \
+            count = 0,                                                          \
+            size = vec.count;                                                   \
+        keep && count != size;                                                  \
+        keep = !keep, count++)                                                  \
+    for(item = (vec.items) + count; keep; keep = !keep)
+
+#define VM_PUSH(vec, x) do {                                                    \
+    if ((vec)->count >= (vec)->cap) {                                           \
+        (vec)->cap = (vec)->cap == 0 ? VM_INIT_CAP : (vec)->cap*2;              \
+        (vec)->items = realloc((vec)->items, (vec)->cap*sizeof(*(vec)->items)); \
+        assert((vec)->items != NULL && "Buy more RAM lol");                     \
+    }                                                                           \
+    (vec)->items[(vec)->count++] = (x);                                         \
+} while (0)
+
+#define VM_CAST(type, x) (*(type*)(&(x)))
+
+#define VM_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
+
+typedef struct {
+    Music* items;
+    size_t cap;
+    size_t count;
+} Vm;
+
+typedef struct {
+    Vm list;
+
+    size_t curr;
+
     float length;
 
-    float time_played;
     float time_check;
-
-    Music music;
-} Plug_Music;
+    float time_played;
+} Playlist;
 
 enum App_State {
     WAITING_FOR_FILE,
@@ -102,7 +129,12 @@ typedef struct {
     bool show_popup_msg;
     float popup_msg_start_time;
 
-    Plug_Music music;
+    bool music_loaded;
+    bool music_paused;
+
+    float music_volume;
+
+    Playlist pl;
 } Plug;
 
 bool is_music(const char*);
@@ -121,7 +153,10 @@ void plug_handle_dropped_files(Plug*);
 void plug_draw_main_screen(Plug*);
 void plug_draw_waiting_for_file_screen(Plug*);
 
-bool plug_load_music(Plug*, const char*);
+Music* plug_load_music(Plug*, Music*, const char*);
+
+Music* plug_get_curr_music(Plug*);
+Music* plug_get_nth_music(Plug*, const size_t);
 
 void plug_reinit(Plug*);
 
