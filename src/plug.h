@@ -64,37 +64,40 @@ typedef struct {
     Vector2 end_pos;
 } Seek_Track;
 
-#define VM_INIT_CAP 256
+#define DA_INIT_CAP 256
 
-#define VM_FOREACH(item, vec)                                                   \
+#define DA_FOREACH(item, vec)                                                   \
     for(int keep = 1,                                                           \
             count = 0,                                                          \
             size = vec.count;                                                   \
         keep && count != size;                                                  \
         keep = !keep, count++)                                                  \
-    for(item = (vec.items) + count; keep; keep = !keep)
+    for(item = (vec.paths) + count; keep; keep = !keep)
 
-#define VM_PUSH(vec, x) do {                                                    \
-    if ((vec)->count >= (vec)->cap) {                                           \
-        (vec)->cap = (vec)->cap == 0 ? VM_INIT_CAP : (vec)->cap*2;              \
-        (vec)->items = realloc((vec)->items, (vec)->cap*sizeof(*(vec)->items)); \
-        assert((vec)->items != NULL && "Buy more RAM lol");                     \
+#define DA_PUSH(vec, x) do {                                                    \
+    assert((vec).count >= 0  && "Count can't be negative");                     \
+    if ((vec).count >= (vec).cap) {                                             \
+        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                 \
+        (vec).paths = realloc((vec).paths, (vec).cap*sizeof(*(vec).paths));     \
+        assert((vec).paths != NULL && "Buy more RAM lol");                      \
     }                                                                           \
-    (vec)->items[(vec)->count++] = (x);                                         \
+    strcpy((vec).paths[(vec).count++].str, (x));                                \
 } while (0)
 
-#define VM_CAST(type, x) (*(type*)(&(x)))
-
-#define VM_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
+#define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
 
 typedef struct {
-    Music* items;
+    char str[TEXT_CAP];
+} Str_Wrapper;
+
+typedef struct {
+    Str_Wrapper* paths;
     size_t cap;
     size_t count;
-} Vm;
+} Paths;
 
 typedef struct {
-    Vm list;
+    Paths list;
 
     size_t curr;
 
@@ -132,6 +135,8 @@ typedef struct {
     bool music_loaded;
     bool music_paused;
 
+    Music curr_music;
+
     float music_volume;
 
     Playlist pl;
@@ -153,10 +158,10 @@ void plug_handle_dropped_files(Plug*);
 void plug_draw_main_screen(Plug*);
 void plug_draw_waiting_for_file_screen(Plug*);
 
-Music* plug_load_music(Plug*, Music*, const char*);
+bool plug_load_music(Plug*, const char*);
 
-Music* plug_get_curr_music(Plug*);
-Music* plug_get_nth_music(Plug*, const size_t);
+char* plug_get_curr_music(Plug*);
+char* plug_get_nth_music(Plug*, const size_t);
 
 void plug_reinit(Plug*);
 

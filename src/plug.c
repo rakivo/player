@@ -8,12 +8,8 @@
 #include "plug.h"
 
 /* TODO:
-    I've just found out that in raylib you gotta unload
-    your already loaded music stream(s) to play another one.
-
-    To make playlist system work, i need to change dyn. array
-    of Music to dyn. array of const char* to obtain possibility
-    of loading (unloading) music stream(s) whenever i need.
+    gonna think about to do tomorrow (2:36:00 AM), but I'm finally implemented playlist system.
+    n -> next song, p -> prev song
 */
 
 const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
@@ -27,6 +23,8 @@ const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
 
 void plug_init(Plug* plug)
 {
+    memset(plug, 0, sizeof(*plug));
+
     plug->background_color = (Color) {24, 24, 24, 255};
 
     plug->font_size = 50.f;
@@ -43,8 +41,6 @@ void plug_init(Plug* plug)
     plug_init_popup_msg(plug);
 
     plug->app_state = WAITING_FOR_FILE;
-
-    memset(&plug->pl, 0, sizeof(plug->pl));
 }
 
 void plug_frame(Plug* plug)
@@ -59,29 +55,26 @@ void plug_frame(Plug* plug)
     }
 
     if (plug->music_loaded && plug->app_state == MAIN_SCREEN) {
-        const Music* m = plug_get_curr_music(plug);
-        if (m) {
-            UpdateMusicStream(*m);
-            plug->pl.time_played = GetMusicTimePlayed(*m);
+        UpdateMusicStream(plug->curr_music);
+        plug->pl.time_played = GetMusicTimePlayed(plug->curr_music);
+
+        snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f / %.1f seconds",
+                 plug->pl.time_played, plug->pl.length);
+
+        // Seek track cursor
+        {
+            const float position = plug->pl.time_played
+                / plug->pl.length
+                * (plug->seek_track.end_pos.x
+                -  plug->seek_track.start_pos.x);
     
-            snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f / %.1f seconds",
-                     plug->pl.time_played, plug->pl.length);
-    
-            // Seek track cursor
-            {
-                const float position = plug->pl.time_played
-                    / plug->pl.length
-                    * (plug->seek_track.end_pos.x
-                    -  plug->seek_track.start_pos.x);
-        
-                plug->seek_track.cursor.center.x = position + plug->seek_track.start_pos.x;
-            }
-    
-            plug->pl.time_check = plug->pl.time_played
-                / plug->pl.length;
-    
-            if (plug->pl.time_check > 1.f) plug->pl.time_check = 1.f;
+            plug->seek_track.cursor.center.x = position + plug->seek_track.start_pos.x;
         }
+
+        plug->pl.time_check = plug->pl.time_played
+            / plug->pl.length;
+
+        if (plug->pl.time_check > 1.f) plug->pl.time_check = 1.f;
     }
 
     BeginDrawing();
@@ -146,18 +139,21 @@ void plug_handle_dropped_files(Plug* plug)
     if (IsFileDropped()) {
         FilePathList files = LoadDroppedFiles();
         for (size_t i = 0; i < files.count; ++i) {
-            Music music = LoadMusicStream(files.paths[i]);
-
-            if (!plug_load_music(plug, &music, files.paths[i]))
-                TraceLog(LOG_ERROR, "Couldn't play music from file: %s", files.paths[i]);
+            if (!is_music(files.paths[i]))
+                TraceLog(LOG_ERROR, "Couldn't load music from file: %s", files.paths[i]);
             else {
-                VM_PUSH(&plug->pl.list, music);
+                DA_PUSH(plug->pl.list, files.paths[i]);
                 TraceLog(LOG_INFO, "Pushed into the playlist this one: %s", files.paths[i]);
                 printf("Music count in the vm array: %zu\n", plug->pl.list.count);
-                VM_FOREACH(Music* i, plug->pl.list)
-                    printf("Length of all music: %f\n", GetMusicTimeLength(*i));
+                for (size_t i = 0; i < plug->pl.list.count; ++i)
+                    printf("Names of music in playlist: %s\n", plug->pl.list.paths[i].str);
             }
         }
+
+        printf("Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.list.count);
+        if (!plug->music_loaded)
+            for (size_t i = 0; i < plug->pl.list.count; ++i)
+                if (plug_load_music(plug, plug->pl.list.paths[i].str)) break;
         
         UnloadDroppedFiles(files);
     }
@@ -173,8 +169,7 @@ void plug_handle_buttons(Plug* plug)
             TraceLog(LOG_INFO, "Track End pos x: %f, y: %f", plug->seek_track.end_pos.x, plug->seek_track.end_pos.y);
             TraceLog(LOG_INFO, "Mouse clicked on the track at x: %f, y: %f", mouse_pos.x, mouse_pos.y);
 
-            const Music* m = plug_get_curr_music(plug);
-            if (m && IsMusicStreamPlaying(*m)) {
+            if (IsMusicStreamPlaying(plug->curr_music)) {
                 plug->seek_track.cursor.center.x = mouse_pos.x;
 
                 const float position = (mouse_pos.x
@@ -182,7 +177,7 @@ void plug_handle_buttons(Plug* plug)
                     / (plug->seek_track.end_pos.x - plug->seek_track.start_pos.x)
                     * plug->pl.length;
 
-                SeekMusicStream(*m, position);
+                SeekMusicStream(plug->curr_music, position);
             }
         }
     }
@@ -192,68 +187,54 @@ void plug_handle_keys(Plug* plug)
 {
     if (IsKeyPressed(KEY_SPACE)) {
         plug->music_paused = !plug->music_paused;
-        const Music* m = plug_get_curr_music(plug);
-        if (m) {
-            if (plug->music_paused) PauseMusicStream(*m);
-            else                    ResumeMusicStream(*m);
-        }
+        if (plug->music_paused) PauseMusicStream(plug->curr_music);
+        else                    ResumeMusicStream(plug->curr_music);
     } else if (IsKeyPressed(KEY_LEFT)) {
-        const Music* m = plug_get_curr_music(plug);
-        if (m && IsMusicStreamPlaying(*m)) {
-            float curr_pos = GetMusicTimePlayed(*m);
+        if (IsMusicStreamPlaying(plug->curr_music)) {
+            float curr_pos = GetMusicTimePlayed(plug->curr_music);
             float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
-            SeekMusicStream(*m, future_pos);
+            SeekMusicStream(plug->curr_music, future_pos);
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
         }
     } else if (IsKeyPressed(KEY_RIGHT)) {
-        const Music* m = plug_get_curr_music(plug);
-        if (m && IsMusicStreamPlaying(*m)) {
-            float curr_pos = GetMusicTimePlayed(*m);
-            float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(*m));
-            SeekMusicStream(*m, future_pos);
+        if (IsMusicStreamPlaying(plug->curr_music)) {
+            float curr_pos = GetMusicTimePlayed(plug->curr_music);
+            float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->curr_music));
+            SeekMusicStream(plug->curr_music, future_pos);
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
         }
     } else if (IsKeyPressed(KEY_UP)) {
-        const Music* m = plug_get_curr_music(plug);
-        if (m && IsMusicStreamPlaying(*m)) {
+        if (IsMusicStreamPlaying(plug->curr_music)) {
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             plug->music_volume = MIN(plug->music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
-            SetMusicVolume(*m, plug->music_volume);
+            SetMusicVolume(plug->curr_music, plug->music_volume);
             snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         }
     } else if (IsKeyPressed(KEY_DOWN)) {
-        const Music* m = plug_get_curr_music(plug);
-        if (m && IsMusicStreamPlaying(*m)) {
+        if (IsMusicStreamPlaying(plug->curr_music)) {
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             plug->music_volume = MAX(plug->music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
-            SetMusicVolume(*m, plug->music_volume);
+            SetMusicVolume(plug->curr_music, plug->music_volume);
             snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         }
     } else if (IsKeyPressed(KEY_N)) {
-        const Music* m = plug_get_nth_music(plug, plug->pl.curr + 1);
-        if (m) {
-            if (IsMusicStreamPlaying(*m)) {
-                StopMusicStream(*m);
-                UnloadMusicStream(*m);
-            }
-            plug->pl.curr++;
-            PlayMusicStream(*m);
+        const char* file_path = plug_get_nth_music(plug, plug->pl.curr + 1);
+        if (file_path && plug_load_music(plug, file_path)) {
+            TraceLog(LOG_INFO, "Increased curr: %zu", plug->pl.curr++);
+            PlayMusicStream(plug->curr_music);
         }
     } else if (IsKeyPressed(KEY_P)) {
-        const Music* m = plug_get_nth_music(plug, plug->pl.curr - 1);
-        const Music* currm = plug_get_curr_music(plug);
-        if (m && currm) {
-            if (IsMusicStreamPlaying(*currm)) {
-                StopMusicStream(*currm);
-                UnloadMusicStream(*currm);
-            }
-            PlayMusicStream(*m);
+        for (size_t i = 0; i < plug->pl.list.count; ++i) printf("list[%zu] = %s\n", i, plug->pl.list.paths[i].str);
+        const char* file_path = plug_get_nth_music(plug, plug->pl.curr - 1);
+        if (file_path && plug_load_music(plug, file_path)) {
+            TraceLog(LOG_INFO, "Decreased curr: %zu", plug->pl.curr--);
+            PlayMusicStream(plug->curr_music);
         }
     }
 }
@@ -306,7 +287,6 @@ void plug_init_popup_msg(Plug* plug)
 {
     plug->popup_msg.text_size = MeasureTextEx(plug->font, "- 0.1  ",
                                               plug->font_size, plug->font_spacing);
-
     plug->popup_msg.text_pos = center_text(plug->popup_msg.text_size);
 }
 
@@ -335,38 +315,36 @@ void plug_init_track(Plug* plug, bool cpydef)
     } else plug->seek_track.cursor.center.y = plug->seek_track.start_pos.y;
 }
 
-Music* plug_get_curr_music(Plug* plug)
+char* plug_get_curr_music(Plug* plug)
 {
-    if (plug->pl.curr >= 0 && plug->pl.curr < plug->pl.list.count) {
-        return &plug->pl.list.items[plug->pl.curr];
-    } else return NULL;
+    if (plug->pl.curr >= 0 && plug->pl.curr < plug->pl.list.count)
+         return plug->pl.list.paths[plug->pl.curr].str;
+    else return NULL;
 }
 
-Music* plug_get_nth_music(Plug* plug, const size_t n)
+char* plug_get_nth_music(Plug* plug, const size_t n)
 {
-    if (n > 0 && n < plug->pl.list.count) {
-        return &plug->pl.list.items[n];
-    } else return NULL;
+    if (n >= 0 && n < plug->pl.list.count)
+         return plug->pl.list.paths[n].str;
+    else return NULL;
 }
 
-Music* plug_load_music(Plug* plug, Music* music, const char* file_path)
+bool plug_load_music(Plug* plug, const char* file_path)
 {
-    if (!is_music(file_path)) return NULL;
+    if (!is_music(file_path)) return false;
 
-    SetMusicVolume(*music, DEFAULT_MUSIC_VOLUME);
+    Music m = LoadMusicStream(file_path);
 
-    if ((*music).frameCount != 0) {
-        const Music* m = plug_get_curr_music(plug);
+    if (m.frameCount != 0) {
+        SetMusicVolume(m, DEFAULT_MUSIC_VOLUME);
 
-        if (m && IsMusicStreamPlaying(*m)) {
-            plug->pl.curr++;
-            StopMusicStream(*m);
-            UnloadMusicStream(*m);
+        if (IsMusicStreamPlaying(plug->curr_music)) {
+            StopMusicStream(plug->curr_music);
+            UnloadMusicStream(plug->curr_music);
         }
 
         plug->app_state = MAIN_SCREEN;
-
-        plug->pl.length = GetMusicTimeLength((*music));
+        plug->pl.length = GetMusicTimeLength(m);
         plug->music_loaded = true;
         plug->music_paused = false;
 
@@ -375,17 +353,20 @@ Music* plug_load_music(Plug* plug, Music* music, const char* file_path)
 
         snprintf(plug->song_name.text, TEXT_CAP, "Song name: %s", song_name);
         TraceLog(LOG_INFO, "Assigned song_name successfully: %s", plug->song_name.text);
-        PlayMusicStream(*music);
-        return music;
-    } else return NULL;
+        plug->curr_music = m;
+        PlayMusicStream(m);
+        return true;
+    } else {
+        UnloadMusicStream(m);
+        return false;
+    }
 }
 
 void plug_free(Plug* plug)
 {
     UnloadFont(plug->font);
-    const Music* m = plug_get_curr_music(plug);
-    if (m && IsMusicStreamPlaying(*m)) UnloadMusicStream(*m);
-    free(plug->pl.list.items);
+    if (IsMusicStreamPlaying(plug->curr_music)) UnloadMusicStream(plug->curr_music);
+    free(plug->pl.list.paths);
     plug->music_loaded = false;
 }
 
