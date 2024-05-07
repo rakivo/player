@@ -26,10 +26,27 @@
 #define DEFAULT_MUSIC_VOLUME_STEP .1
 #define DEFAULT_MUSIC_VOLUME .1
 
-#define TEXT_CAP 512
+#define SONG_VOLUME_MSG_DURATION 1.f
+
+#define TEXT_CAP 1024
+
 #define SUPPORTED_FORMATS_CAP 6
 
-#define SONG_VOLUME_MSG_DURATION 1.f
+extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
+
+#define DA_INIT_CAP 256
+
+#define DA_PUSH(vec, x) do {                                                    \
+    assert((vec).count >= 0  && "Count can't be negative");                     \
+    if ((vec).count >= (vec).cap) {                                             \
+        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                 \
+        (vec).songs = realloc((vec).songs, (vec).cap*sizeof(*(vec).songs));     \
+        assert((vec).songs != NULL && "Buy more RAM lol");                      \
+    }                                                                           \
+    (vec).songs[(vec).count++] = (x);                                           \
+} while (0)
+
+#define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
 
 typedef struct {
     char text[TEXT_CAP];
@@ -64,40 +81,22 @@ typedef struct {
     Vector2 end_pos;
 } Seek_Track;
 
-#define DA_INIT_CAP 256
-
-#define DA_FOREACH(item, vec)                                                   \
-    for(int keep = 1,                                                           \
-            count = 0,                                                          \
-            size = vec.count;                                                   \
-        keep && count != size;                                                  \
-        keep = !keep, count++)                                                  \
-    for(item = (vec.paths) + count; keep; keep = !keep)
-
-#define DA_PUSH(vec, x) do {                                                    \
-    assert((vec).count >= 0  && "Count can't be negative");                     \
-    if ((vec).count >= (vec).cap) {                                             \
-        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                 \
-        (vec).paths = realloc((vec).paths, (vec).cap*sizeof(*(vec).paths));     \
-        assert((vec).paths != NULL && "Buy more RAM lol");                      \
-    }                                                                           \
-    strcpy((vec).paths[(vec).count++].str, (x));                                \
-} while (0)
-
-#define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
-
 typedef struct {
     char str[TEXT_CAP];
 } Str_Wrapper;
 
 typedef struct {
-    Str_Wrapper* paths;
-    size_t cap;
-    size_t count;
-} Paths;
+    Str_Wrapper path;
+
+    size_t times_played;
+    // ...
+} Song;
 
 typedef struct {
-    Paths list;
+    Song* songs;
+
+    size_t cap;
+    size_t count;
 
     size_t curr;
 
@@ -130,10 +129,13 @@ typedef struct {
     Text_Label popup_msg;
 
     bool show_popup_msg;
+
     float popup_msg_start_time;
 
     bool music_loaded;
     bool music_paused;
+
+    bool shuffle_mode;
 
     Music curr_music;
 
@@ -146,6 +148,8 @@ bool is_music(const char*);
 bool is_mouse_on_track(const Vector2, Seek_Track);
 
 void get_song_name(const char*, char*, const size_t);
+
+Song new_song(const char*, const size_t);
 
 Vector2 center_text(const Vector2);
 

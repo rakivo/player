@@ -153,16 +153,17 @@ void plug_handle_dropped_files(Plug* plug)
             if (!is_music(files.paths[i]))
                 TraceLog(LOG_ERROR, "Couldn't load music from file: %s", files.paths[i]);
             else {
-                DA_PUSH(plug->pl.list, files.paths[i]);
+                const Song song = new_song(files.paths[i], 0);
+                DA_PUSH(plug->pl, song);
                 TraceLog(LOG_INFO, "Pushed into the playlist this one: %s", files.paths[i]);
-                TraceLog(LOG_INFO, "Music count in the vm array: %zu\n", plug->pl.list.count);
+                TraceLog(LOG_INFO, "Music count in the vm array: %zu\n", plug->pl.count);
                 plug_print_songs(plug);
             }
         }
 
-        printf("Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.list.count);
-        for (size_t i = plug->pl.list.count; i >= 0; --i)
-            if (plug_load_music(plug, plug->pl.list.paths[i].str)) break;
+        printf("Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.count);
+        for (size_t i = plug->pl.count; i >= 0; --i)
+            if (plug_load_music(plug, plug->pl.songs[i].path.str)) break;
         
         UnloadDroppedFiles(files);
     }
@@ -323,15 +324,15 @@ void plug_init_track(Plug* plug, bool cpydef)
 
 char* plug_get_curr_music(Plug* plug)
 {
-    if (plug->pl.curr >= 0 && plug->pl.curr < plug->pl.list.count)
-         return plug->pl.list.paths[plug->pl.curr].str;
+    if (plug->pl.curr >= 0 && plug->pl.curr < plug->pl.count)
+        return plug->pl.songs[plug->pl.curr].path.str;
     else return NULL;
 }
 
 char* plug_get_nth_music(Plug* plug, const size_t n)
 {
-    if (n >= 0 && n < plug->pl.list.count)
-         return plug->pl.list.paths[n].str;
+    if (n >= 0 && n < plug->pl.count)
+        return plug->pl.songs[n].path.str;
     else return NULL;
 }
 
@@ -412,16 +413,26 @@ bool plug_load_music(Plug* plug, const char* file_path)
 
 void plug_print_songs(Plug* plug)
 {
-    for (size_t i = 0; i < plug->pl.list.count; ++i)
-        printf("Names of music in playlist: %s\n", plug->pl.list.paths[i].str);
+    for (size_t i = 0; i < plug->pl.count; ++i)
+        printf("Names of music in playlist: %s\n", plug->pl.songs[i].path.str);
 }
 
 void plug_free(Plug* plug)
 {
     UnloadFont(plug->font);
     if (IsMusicStreamPlaying(plug->curr_music)) UnloadMusicStream(plug->curr_music);
-    free(plug->pl.list.paths);
+    free(plug->pl.songs);
     plug->music_loaded = false;
+}
+
+Song new_song(const char* file_path, const size_t times_played)
+{
+    Str_Wrapper w;
+    strcpy(w.str, file_path);
+    return (Song) {
+        w,
+        times_played
+    };
 }
 
 void get_song_name(const char* input, char* output, const size_t output_size)
