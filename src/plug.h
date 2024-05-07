@@ -160,6 +160,10 @@ void plug_draw_waiting_for_file_screen(Plug*);
 
 bool plug_load_music(Plug*, const char*);
 
+bool plug_next_song(Plug*);
+
+void plug_print_songs(Plug*);
+
 char* plug_get_curr_music(Plug*);
 char* plug_get_nth_music(Plug*, const size_t);
 

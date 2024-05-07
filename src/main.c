@@ -5,7 +5,7 @@
 
 #include "plug.h"
 
-#define LIB_PLUG_PATH "libplug.so"
+#define LIB_PLUG_PATH "../build/libplug.so"
 
 const bool REINIT = 0;
 

@@ -1,25 +1,17 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <string.h>
 
-#include <stdlib.h>
 #include <raylib.h>
 
 #include "plug.h"
 
 /* TODO:
-    gonna think about to do tomorrow (2:36:00 AM), but I'm finally implemented playlist system.
-    n -> next song, p -> prev song
+    Shuffle system.
 */
 
-const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {
-    ".xm",
-    ".wav",
-    ".ogg",
-    ".mp3",
-    ".qoa",
-    ".mod"
-};
+const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {".xm", ".wav", ".ogg", ".mp3", ".qoa", ".mod"};
 
 void plug_init(Plug* plug)
 {
@@ -40,7 +32,17 @@ void plug_init(Plug* plug)
     plug_init_song_time(plug, true);
     plug_init_popup_msg(plug);
 
+    plug->music_volume = DEFAULT_MUSIC_VOLUME;
+
     plug->app_state = WAITING_FOR_FILE;
+}
+
+void plug_reinit(Plug* plug)
+{
+    plug_init_popup_msg(plug);
+    plug_init_song_name(plug, false);
+    plug_init_song_time(plug, false);
+    plug_init_track(plug, false);
 }
 
 void plug_frame(Plug* plug)
@@ -57,6 +59,15 @@ void plug_frame(Plug* plug)
     if (plug->music_loaded && plug->app_state == MAIN_SCREEN) {
         UpdateMusicStream(plug->curr_music);
         plug->pl.time_played = GetMusicTimePlayed(plug->curr_music);
+
+#ifdef DEBUG
+        TraceLog(LOG_INFO, "Song time played: %.3f, Song length: %.3f", plug->pl.time_played, plug->pl.length);
+#endif
+
+        if (plug->pl.time_played >= plug->pl.length - 0.035) {
+            TraceLog(LOG_INFO, "Song ended, playing next one");
+            plug_next_song(plug);
+        }
 
         snprintf(plug->song_time.text, TEXT_CAP, "Time played: %.1f / %.1f seconds",
                  plug->pl.time_played, plug->pl.length);
@@ -144,16 +155,14 @@ void plug_handle_dropped_files(Plug* plug)
             else {
                 DA_PUSH(plug->pl.list, files.paths[i]);
                 TraceLog(LOG_INFO, "Pushed into the playlist this one: %s", files.paths[i]);
-                printf("Music count in the vm array: %zu\n", plug->pl.list.count);
-                for (size_t i = 0; i < plug->pl.list.count; ++i)
-                    printf("Names of music in playlist: %s\n", plug->pl.list.paths[i].str);
+                TraceLog(LOG_INFO, "Music count in the vm array: %zu\n", plug->pl.list.count);
+                plug_print_songs(plug);
             }
         }
 
         printf("Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.list.count);
-        if (!plug->music_loaded)
-            for (size_t i = 0; i < plug->pl.list.count; ++i)
-                if (plug_load_music(plug, plug->pl.list.paths[i].str)) break;
+        for (size_t i = plug->pl.list.count; i >= 0; --i)
+            if (plug_load_music(plug, plug->pl.list.paths[i].str)) break;
         
         UnloadDroppedFiles(files);
     }
@@ -224,27 +233,24 @@ void plug_handle_keys(Plug* plug)
             snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         }
     } else if (IsKeyPressed(KEY_N)) {
+        plug->show_popup_msg = true;
+        plug->popup_msg_start_time = GetTime();
+        snprintf(plug->popup_msg.text, TEXT_CAP, ">");
         const char* file_path = plug_get_nth_music(plug, plug->pl.curr + 1);
         if (file_path && plug_load_music(plug, file_path)) {
             TraceLog(LOG_INFO, "Increased curr: %zu", plug->pl.curr++);
             PlayMusicStream(plug->curr_music);
         }
     } else if (IsKeyPressed(KEY_P)) {
-        for (size_t i = 0; i < plug->pl.list.count; ++i) printf("list[%zu] = %s\n", i, plug->pl.list.paths[i].str);
+        plug->show_popup_msg = true;
+        plug->popup_msg_start_time = GetTime();
+        snprintf(plug->popup_msg.text, TEXT_CAP, "<");
         const char* file_path = plug_get_nth_music(plug, plug->pl.curr - 1);
         if (file_path && plug_load_music(plug, file_path)) {
             TraceLog(LOG_INFO, "Decreased curr: %zu", plug->pl.curr--);
             PlayMusicStream(plug->curr_music);
         }
     }
-}
-
-void plug_reinit(Plug* plug)
-{
-    plug_init_popup_msg(plug);
-    plug_init_song_name(plug, false);
-    plug_init_song_time(plug, false);
-    plug_init_track(plug, false);
 }
 
 void plug_init_waiting_for_file_msg(Plug* plug)
@@ -285,7 +291,7 @@ void plug_init_song_time(Plug* plug, bool cpydef)
 
 void plug_init_popup_msg(Plug* plug)
 {
-    plug->popup_msg.text_size = MeasureTextEx(plug->font, "- 0.1  ",
+    plug->popup_msg.text_size = MeasureTextEx(plug->font, "       ",
                                               plug->font_size, plug->font_spacing);
     plug->popup_msg.text_pos = center_text(plug->popup_msg.text_size);
 }
@@ -329,6 +335,45 @@ char* plug_get_nth_music(Plug* plug, const size_t n)
     else return NULL;
 }
 
+bool plug_next_song(Plug* plug)
+{
+    plug_print_songs(plug);
+
+    const char* next_file_path = plug_get_nth_music(plug, plug->pl.curr + 1);
+    if (next_file_path) {
+        if (IsMusicStreamPlaying(plug->curr_music)) {
+            StopMusicStream(plug->curr_music);
+            UnloadMusicStream(plug->curr_music);
+        }
+
+        if (plug_load_music(plug, next_file_path)) plug->pl.curr++;
+        else {
+            TraceLog(LOG_ERROR, "Couldn't load music from file: %s", next_file_path);
+            return false;
+        }
+    } else {
+        // If this happened it means that curr is the last song in playlist,
+        // therefore, the one way that we can handle that is set curr to 0
+        // and play all of the songs once again.
+
+        const char* first_song = plug_get_nth_music(plug, 0);
+        if (first_song) {
+            if (IsMusicStreamPlaying(plug->curr_music)) {
+                StopMusicStream(plug->curr_music);
+                UnloadMusicStream(plug->curr_music);
+            }
+    
+            if (plug_load_music(plug, first_song)) plug->pl.curr = 0;
+            else {
+                TraceLog(LOG_ERROR, "Couldn't load music from file: %s", first_song);
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 bool plug_load_music(Plug* plug, const char* file_path)
 {
     if (!is_music(file_path)) return false;
@@ -336,15 +381,18 @@ bool plug_load_music(Plug* plug, const char* file_path)
     Music m = LoadMusicStream(file_path);
 
     if (m.frameCount != 0) {
-        SetMusicVolume(m, DEFAULT_MUSIC_VOLUME);
+        SetMusicVolume(m, plug->music_volume);
 
         if (IsMusicStreamPlaying(plug->curr_music)) {
+            TraceLog(LOG_INFO, "Music stream've been playing, unloading it");
             StopMusicStream(plug->curr_music);
             UnloadMusicStream(plug->curr_music);
         }
 
         plug->app_state = MAIN_SCREEN;
+
         plug->pl.length = GetMusicTimeLength(m);
+        
         plug->music_loaded = true;
         plug->music_paused = false;
 
@@ -360,6 +408,12 @@ bool plug_load_music(Plug* plug, const char* file_path)
         UnloadMusicStream(m);
         return false;
     }
+}
+
+void plug_print_songs(Plug* plug)
+{
+    for (size_t i = 0; i < plug->pl.list.count; ++i)
+        printf("Names of music in playlist: %s\n", plug->pl.list.paths[i].str);
 }
 
 void plug_free(Plug* plug)
