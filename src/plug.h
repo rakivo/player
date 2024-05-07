@@ -19,7 +19,7 @@
 #define SHUFFLE_PATH "../resources/shuffle.png"
 #define FONT_PATH "../resources/Alegreya-Regular.ttf"
 
-#define WAITING_MESSAGE   "Drop music file to play music"
+#define WAITING_MESSAGE   "Drag & Drop Music Here"
 #define NAME_TEXT_MESSAGE "Song name: "
 #define TIME_TEXT_MESSAGE "Time played: "
 

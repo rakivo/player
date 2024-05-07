@@ -44,6 +44,7 @@ bool plug_reload(void)
 
 int main(void)
 {
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Player");
     InitAudioDevice();
