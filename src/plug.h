@@ -16,6 +16,7 @@
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 600
 
+#define SHUFFLE_PATH "../resources/shuffle.png"
 #define FONT_PATH "../resources/Alegreya-Regular.ttf"
 
 #define WAITING_MESSAGE   "Drop music file to play music"
@@ -26,7 +27,7 @@
 #define DEFAULT_MUSIC_VOLUME_STEP .1
 #define DEFAULT_MUSIC_VOLUME .1
 
-#define SONG_VOLUME_MSG_DURATION 1.f
+#define POPUP_MSG_DURATION 0.5
 
 #define TEXT_CAP 1024
 
@@ -53,6 +54,17 @@ typedef struct {
     Vector2 text_size;
     Vector2 text_pos;
 } Text_Label;
+
+typedef struct {
+    Texture2D texture;
+
+    Vector2 position;
+
+    float rotation;
+    float scale;
+
+    Color color;
+} Shuffle_Texture;
 
 typedef struct {
     Vector2 center;
@@ -82,11 +94,7 @@ typedef struct {
 } Seek_Track;
 
 typedef struct {
-    char str[TEXT_CAP];
-} Str_Wrapper;
-
-typedef struct {
-    Str_Wrapper path;
+    char path[TEXT_CAP];
 
     size_t times_played;
     // ...
@@ -96,9 +104,10 @@ typedef struct {
     Song* songs;
 
     size_t cap;
+    size_t curr;
     size_t count;
 
-    size_t curr;
+    Song prev_song;
 
     float length;
 
@@ -109,6 +118,20 @@ typedef struct {
 enum App_State {
     WAITING_FOR_FILE,
     MAIN_SCREEN
+};
+
+enum Popup_Msg {
+    SEEK_FORWARD,
+    SEEK_BACKWARD,
+
+    VOLUME_UP,
+    VOLUME_DOWN,
+
+    NEXT_SONG,
+    PREV_SONG,
+    
+    ENABLE_SHUFFLE_MODE,
+    DISABLE_SHUFFLE_MODE
 };
 
 typedef struct {
@@ -132,10 +155,15 @@ typedef struct {
 
     float popup_msg_start_time;
 
+    enum Popup_Msg popup_msg_type;
+
     bool music_loaded;
     bool music_paused;
 
     bool shuffle_mode;
+    bool shuffle_texture_loaded;
+
+    Shuffle_Texture shuffle_t;
 
     Music curr_music;
 
@@ -162,19 +190,20 @@ void plug_handle_dropped_files(Plug*);
 void plug_draw_main_screen(Plug*);
 void plug_draw_waiting_for_file_screen(Plug*);
 
-bool plug_load_music(Plug*, const char*);
+bool plug_load_music(Plug*, Song*);
 
 bool plug_next_song(Plug*);
 
 void plug_print_songs(Plug*);
 
-char* plug_get_curr_music(Plug*);
-char* plug_get_nth_music(Plug*, const size_t);
+Song* plug_get_curr_song(Plug*);
+Song* plug_get_nth_song(Plug*, const size_t);
 
 void plug_reinit(Plug*);
 
 void plug_init_popup_msg(Plug*);
 void plug_init_track(Plug*, bool);
+void plug_init_shuffle_texture(Plug*);
 void plug_init_song_name(Plug*, bool);
 void plug_init_song_time(Plug*, bool);
 void plug_init_waiting_for_file_msg(Plug*);

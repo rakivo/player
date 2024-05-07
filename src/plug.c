@@ -7,6 +7,8 @@
 
 #include "plug.h"
 
+#define DEBUG
+
 /* TODO:
     Shuffle system.
 */
@@ -26,11 +28,12 @@ void plug_init(Plug* plug)
     GenTextureMipmaps(&plug->font.texture);
     SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
 
-    plug_init_waiting_for_file_msg(plug);
+    plug_init_popup_msg(plug);
     plug_init_track(plug, true);
     plug_init_song_name(plug, true);
     plug_init_song_time(plug, true);
-    plug_init_popup_msg(plug);
+    plug_init_shuffle_texture(plug);
+    plug_init_waiting_for_file_msg(plug);
 
     plug->music_volume = DEFAULT_MUSIC_VOLUME;
 
@@ -40,9 +43,11 @@ void plug_init(Plug* plug)
 void plug_reinit(Plug* plug)
 {
     plug_init_popup_msg(plug);
+    plug_init_track(plug, false);
     plug_init_song_name(plug, false);
     plug_init_song_time(plug, false);
-    plug_init_track(plug, false);
+    plug_init_shuffle_texture(plug);
+    plug_init_waiting_for_file_msg(plug);
 }
 
 void plug_frame(Plug* plug)
@@ -59,10 +64,6 @@ void plug_frame(Plug* plug)
     if (plug->music_loaded && plug->app_state == MAIN_SCREEN) {
         UpdateMusicStream(plug->curr_music);
         plug->pl.time_played = GetMusicTimePlayed(plug->curr_music);
-
-#ifdef DEBUG
-        TraceLog(LOG_INFO, "Song time played: %.3f, Song length: %.3f", plug->pl.time_played, plug->pl.length);
-#endif
 
         if (plug->pl.time_played >= plug->pl.length - 0.035) {
             TraceLog(LOG_INFO, "Song ended, playing next one");
@@ -122,13 +123,33 @@ void plug_draw_main_screen(Plug* plug)
                RAYWHITE);
 
     if (plug->show_popup_msg) {
-        if (GetTime() - plug->popup_msg_start_time < SONG_VOLUME_MSG_DURATION) {
-            DrawTextEx(plug->font,
+        if (GetTime() - plug->popup_msg_start_time < POPUP_MSG_DURATION) {
+            switch (plug->popup_msg_type) {
+            case SEEK_FORWARD: snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_SEEK_STEP); break;
+            case SEEK_BACKWARD: snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_SEEK_STEP); break;
+        
+            case VOLUME_UP: snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP); break;
+            case VOLUME_DOWN: snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP); break;
+        
+            case NEXT_SONG: strcpy(plug->popup_msg.text, ">"); break;
+            case PREV_SONG: strcpy(plug->popup_msg.text, "<"); break;
+            
+            default:
+                DrawTextureEx(plug->shuffle_t.texture,
+                              plug->shuffle_t.position,
+                              plug->shuffle_t.rotation,
+                              plug->shuffle_t.scale,
+                              plug->shuffle_t.color);
+            }
+            if (plug->popup_msg_type != ENABLE_SHUFFLE_MODE
+            &&  plug->popup_msg_type != DISABLE_SHUFFLE_MODE) {
+                DrawTextEx(plug->font,
                        plug->popup_msg.text,
                        plug->popup_msg.text_pos,
                        plug->font_size,
                        plug->font_spacing,
                        RAYWHITE);
+            }
         } else plug->show_popup_msg = false;
     }
 
@@ -155,15 +176,27 @@ void plug_handle_dropped_files(Plug* plug)
             else {
                 const Song song = new_song(files.paths[i], 0);
                 DA_PUSH(plug->pl, song);
+#ifdef DEBUG
                 TraceLog(LOG_INFO, "Pushed into the playlist this one: %s", files.paths[i]);
                 TraceLog(LOG_INFO, "Music count in the vm array: %zu\n", plug->pl.count);
+#endif
                 plug_print_songs(plug);
             }
         }
 
-        printf("Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.count);
-        for (size_t i = plug->pl.count; i >= 0; --i)
-            if (plug_load_music(plug, plug->pl.songs[i].path.str)) break;
+#ifdef DEBUG
+        TraceLog(LOG_INFO, "Curr: %zu, count: %zu\n", plug->pl.curr, plug->pl.count);
+#endif
+
+        for (size_t i = plug->pl.count - 1; i >= 0; --i) {
+#ifdef DEBUG
+            TraceLog(LOG_INFO, "plug->pl.songs[%zu] file_path: %s", i, plug->pl.songs[i].path);
+#endif
+            if (plug_load_music(plug, &plug->pl.songs[i])) {
+                if (plug->pl.curr > 0) plug->pl.curr++;
+                break;
+            }
+        }
         
         UnloadDroppedFiles(files);
     }
@@ -175,9 +208,12 @@ void plug_handle_buttons(Plug* plug)
         Vector2 mouse_pos = GetMousePosition();
 
         if (is_mouse_on_track(mouse_pos, plug->seek_track)) {
+
+#ifdef DEBUG
             TraceLog(LOG_INFO, "Track Start pos x: %f, y: %f", plug->seek_track.start_pos.x, plug->seek_track.start_pos.y);
             TraceLog(LOG_INFO, "Track End pos x: %f, y: %f", plug->seek_track.end_pos.x, plug->seek_track.end_pos.y);
             TraceLog(LOG_INFO, "Mouse clicked on the track at x: %f, y: %f", mouse_pos.x, mouse_pos.y);
+#endif
 
             if (IsMusicStreamPlaying(plug->curr_music)) {
                 plug->seek_track.cursor.center.x = mouse_pos.x;
@@ -206,7 +242,7 @@ void plug_handle_keys(Plug* plug)
             SeekMusicStream(plug->curr_music, future_pos);
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
-            snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
+            plug->popup_msg_type = SEEK_FORWARD;
         }
     } else if (IsKeyPressed(KEY_RIGHT)) {
         if (IsMusicStreamPlaying(plug->curr_music)) {
@@ -215,42 +251,60 @@ void plug_handle_keys(Plug* plug)
             SeekMusicStream(plug->curr_music, future_pos);
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
-            snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_SEEK_STEP);
+            plug->popup_msg_type = SEEK_BACKWARD;
         }
     } else if (IsKeyPressed(KEY_UP)) {
         if (IsMusicStreamPlaying(plug->curr_music)) {
+            plug->popup_msg_type = VOLUME_UP;
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             plug->music_volume = MIN(plug->music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
             SetMusicVolume(plug->curr_music, plug->music_volume);
-            snprintf(plug->popup_msg.text, TEXT_CAP, "+ %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         }
     } else if (IsKeyPressed(KEY_DOWN)) {
         if (IsMusicStreamPlaying(plug->curr_music)) {
+            plug->popup_msg_type = VOLUME_DOWN;
             plug->show_popup_msg = true;
             plug->popup_msg_start_time = GetTime();
             plug->music_volume = MAX(plug->music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
             SetMusicVolume(plug->curr_music, plug->music_volume);
-            snprintf(plug->popup_msg.text, TEXT_CAP, "- %.1f  ", DEFAULT_MUSIC_VOLUME_STEP);
         }
     } else if (IsKeyPressed(KEY_N)) {
+        plug->popup_msg_type = NEXT_SONG;
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        snprintf(plug->popup_msg.text, TEXT_CAP, ">");
-        const char* file_path = plug_get_nth_music(plug, plug->pl.curr + 1);
-        if (file_path && plug_load_music(plug, file_path)) {
-            TraceLog(LOG_INFO, "Increased curr: %zu", plug->pl.curr++);
+        Song* song = plug_get_nth_song(plug, plug->pl.curr + 1);
+
+#ifdef DEBUG
+        if (!song) TraceLog(LOG_ERROR, "Next song is NULL, curr: %zu", plug->pl.curr);
+#endif
+
+        if (song && plug_load_music(plug, song)) {
+            TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr++);
             PlayMusicStream(plug->curr_music);
         }
     } else if (IsKeyPressed(KEY_P)) {
+        plug->popup_msg_type = PREV_SONG;
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        snprintf(plug->popup_msg.text, TEXT_CAP, "<");
-        const char* file_path = plug_get_nth_music(plug, plug->pl.curr - 1);
-        if (file_path && plug_load_music(plug, file_path)) {
-            TraceLog(LOG_INFO, "Decreased curr: %zu", plug->pl.curr--);
+        Song* song = plug_get_nth_song(plug, plug->pl.curr - 1);
+
+#ifdef DEBUG
+        if (!song) TraceLog(LOG_ERROR, "Previous song is NULL, curr: %zu", plug->pl.curr);
+#endif
+
+        if (song && plug_load_music(plug, song)) {
+            TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr--);
             PlayMusicStream(plug->curr_music);
         }
+    } else if (IsKeyPressed(KEY_S)) {
+        if (plug->shuffle_mode) plug->popup_msg_type = ENABLE_SHUFFLE_MODE;
+        else                    plug->popup_msg_type = DISABLE_SHUFFLE_MODE;
+
+        plug->shuffle_mode = !plug->shuffle_mode;
+        plug->show_popup_msg = true;
+        plug->popup_msg_start_time = GetTime();
+        strcpy(plug->popup_msg.text, "shuffling mode enabled");
     }
 }
 
@@ -322,17 +376,34 @@ void plug_init_track(Plug* plug, bool cpydef)
     } else plug->seek_track.cursor.center.y = plug->seek_track.start_pos.y;
 }
 
-char* plug_get_curr_music(Plug* plug)
+void plug_init_shuffle_texture(Plug *plug)
+{
+    if (!plug->shuffle_texture_loaded) {
+        plug->shuffle_t.texture = LoadTexture(SHUFFLE_PATH);
+        plug->shuffle_texture_loaded = true;
+    }
+    plug->shuffle_t.position = (Vector2) {
+        .x = (GetScreenWidth() - plug->shuffle_t.texture.width / 2) / 2,
+        .y = (GetScreenHeight() - plug->shuffle_t.texture.height / 2) / 2,
+    };
+    plug->shuffle_t.rotation = 0.f;
+    plug->shuffle_t.scale = 0.5;
+    plug->shuffle_t.color = WHITE;
+    plug->shuffle_texture_loaded = true;
+    SetTextureFilter(plug->shuffle_t.texture, TEXTURE_FILTER_BILINEAR);
+}
+
+Song* plug_get_curr_song(Plug* plug)
 {
     if (plug->pl.curr >= 0 && plug->pl.curr < plug->pl.count)
-        return plug->pl.songs[plug->pl.curr].path.str;
+        return &plug->pl.songs[plug->pl.curr];
     else return NULL;
 }
 
-char* plug_get_nth_music(Plug* plug, const size_t n)
+Song* plug_get_nth_song(Plug* plug, const size_t n)
 {
     if (n >= 0 && n < plug->pl.count)
-        return plug->pl.songs[n].path.str;
+        return &plug->pl.songs[n];
     else return NULL;
 }
 
@@ -340,16 +411,16 @@ bool plug_next_song(Plug* plug)
 {
     plug_print_songs(plug);
 
-    const char* next_file_path = plug_get_nth_music(plug, plug->pl.curr + 1);
-    if (next_file_path) {
+    Song* next_song = plug_get_nth_song(plug, plug->pl.curr + 1);
+    if (next_song) {
         if (IsMusicStreamPlaying(plug->curr_music)) {
             StopMusicStream(plug->curr_music);
             UnloadMusicStream(plug->curr_music);
         }
 
-        if (plug_load_music(plug, next_file_path)) plug->pl.curr++;
+        if (plug_load_music(plug, next_song)) plug->pl.curr++;
         else {
-            TraceLog(LOG_ERROR, "Couldn't load music from file: %s", next_file_path);
+            TraceLog(LOG_ERROR, "Couldn't load music from file: %s", next_song);
             return false;
         }
     } else {
@@ -357,7 +428,7 @@ bool plug_next_song(Plug* plug)
         // therefore, the one way that we can handle that is set curr to 0
         // and play all of the songs once again.
 
-        const char* first_song = plug_get_nth_music(plug, 0);
+        Song* first_song = plug_get_nth_song(plug, 0);
         if (first_song) {
             if (IsMusicStreamPlaying(plug->curr_music)) {
                 StopMusicStream(plug->curr_music);
@@ -375,11 +446,12 @@ bool plug_next_song(Plug* plug)
     return true;
 }
 
-bool plug_load_music(Plug* plug, const char* file_path)
+bool plug_load_music(Plug* plug, Song* song)
 {
-    if (!is_music(file_path)) return false;
-
-    Music m = LoadMusicStream(file_path);
+#ifdef DEBUG
+    TraceLog(LOG_INFO, "Passed file format: %s", song->path);
+#endif
+    Music m = LoadMusicStream(song->path);
 
     if (m.frameCount != 0) {
         SetMusicVolume(m, plug->music_volume);
@@ -398,10 +470,17 @@ bool plug_load_music(Plug* plug, const char* file_path)
         plug->music_paused = false;
 
         char song_name[256];
-        get_song_name(file_path, song_name, TEXT_CAP);
+        get_song_name(song->path, song_name, TEXT_CAP);
 
         snprintf(plug->song_name.text, TEXT_CAP, "Song name: %s", song_name);
+
+        plug->pl.prev_song = *plug_get_curr_song(plug);
+
+#ifdef DEBUG
         TraceLog(LOG_INFO, "Assigned song_name successfully: %s", plug->song_name.text);
+        TraceLog(LOG_INFO, "Previous song: %s", plug->pl.prev_song.path);
+#endif
+
         plug->curr_music = m;
         PlayMusicStream(m);
         return true;
@@ -414,42 +493,33 @@ bool plug_load_music(Plug* plug, const char* file_path)
 void plug_print_songs(Plug* plug)
 {
     for (size_t i = 0; i < plug->pl.count; ++i)
-        printf("Names of music in playlist: %s\n", plug->pl.songs[i].path.str);
+        printf("Names of music in playlist: %s\n", plug->pl.songs[i].path);
 }
 
 void plug_free(Plug* plug)
 {
     UnloadFont(plug->font);
+    if (plug->shuffle_texture_loaded) UnloadTexture(plug->shuffle_t.texture);
     if (IsMusicStreamPlaying(plug->curr_music)) UnloadMusicStream(plug->curr_music);
     free(plug->pl.songs);
-    plug->music_loaded = false;
+    TraceLog(LOG_INFO, "Freed allocated songs");
 }
 
 Song new_song(const char* file_path, const size_t times_played)
 {
-    Str_Wrapper w;
-    strcpy(w.str, file_path);
-    return (Song) {
-        w,
-        times_played
-    };
-}
+    Song new_song;
+    new_song.times_played = times_played;
 
-void get_song_name(const char* input, char* output, const size_t output_size)
-{
-    size_t input_len = strlen(input);
-    size_t out_len = 0;
+    if (strlen(file_path) > TEXT_CAP)
+        TraceLog(LOG_ERROR, "file path length is greater than supported, truncating..");
 
-    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i)
-        if (out_len < output_size - 1)
-            output[out_len++] = input[i];
+    strncpy(new_song.path, file_path, TEXT_CAP);
+    
+#ifdef DEBUG
+    TraceLog(LOG_INFO, "Copied to the path: %s", new_song.path);
+#endif
 
-    output[out_len] = '\0';
-    for (size_t i = 0; i < out_len / 2; i++) {
-        char temp = output[i];
-        output[i] = output[out_len - i - 1];
-        output[out_len - i - 1] = temp;
-    }
+    return new_song;
 }
 
 bool is_music(const char* path)
@@ -472,7 +542,24 @@ bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
 Vector2 center_text(const Vector2 text_size)
 {
     return (Vector2) {
-        .x = ((GetScreenWidth() / 2) - (text_size.x / 2)),
-        .y = ((GetScreenHeight() / 2) - (text_size.y / 2))
+        .x = (GetScreenWidth() - text_size.x) / 2,
+        .y = (GetScreenHeight() - text_size.y) / 2,
     };
+}
+
+void get_song_name(const char* input, char* output, const size_t output_size)
+{
+    size_t input_len = strlen(input);
+    size_t out_len = 0;
+
+    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i)
+        if (out_len < output_size - 1)
+            output[out_len++] = input[i];
+
+    output[out_len] = '\0';
+    for (size_t i = 0; i < out_len / 2; i++) {
+        char temp = output[i];
+        output[i] = output[out_len - i - 1];
+        output[out_len - i - 1] = temp;
+    }
 }
