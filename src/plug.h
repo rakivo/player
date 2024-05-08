@@ -68,12 +68,9 @@ typedef struct {
 } Texture_Label;
 
 typedef struct {
-    Vector2 center;
+    Rectangle rect;
 
-    float radius;
-
-    float start_angle;
-    float end_angle;
+    float roundness;
 
     int segments;
 

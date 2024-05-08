@@ -81,7 +81,7 @@ void plug_frame(Plug* plug)
                 * (plug->seek_track.end_pos.x
                 -  plug->seek_track.start_pos.x);
 
-            plug->seek_track.cursor.center.x = position + plug->seek_track.start_pos.x;
+            plug->seek_track.cursor.rect.x = position + plug->seek_track.start_pos.x;
         }
 
         plug->pl.time_check = plug->pl.time_played
@@ -170,12 +170,10 @@ void plug_draw_main_screen(Plug* plug)
                plug->seek_track.thickness,
                plug->seek_track.color);
 
-    DrawCircleSector(plug->seek_track.cursor.center,
-                     plug->seek_track.cursor.radius,
-                     plug->seek_track.cursor.start_angle,
-                     plug->seek_track.cursor.end_angle,
-                     plug->seek_track.cursor.segments,
-                     plug->seek_track.cursor.color);
+    DrawRectangleRounded(plug->seek_track.cursor.rect,
+                         plug->seek_track.cursor.roundness,
+                         plug->seek_track.cursor.segments,
+                         plug->seek_track.cursor.color);
 }
 
 void plug_handle_dropped_files(Plug* plug)
@@ -228,7 +226,7 @@ void plug_handle_buttons(Plug* plug)
 #endif
 
             if (IsMusicStreamPlaying(plug->curr_music)) {
-                plug->seek_track.cursor.center.x = mouse_pos.x;
+                plug->seek_track.cursor.rect.x = mouse_pos.x;
 
                 const float position = (mouse_pos.x
                     - plug->seek_track.start_pos.x)
@@ -304,9 +302,12 @@ void plug_handle_keys(Plug* plug)
         plug->popup_msg_start_time = GetTime();
 
         size_t next_index = 0;
-        if (plug->shuffle_mode)      next_index = rand() % plug->pl.count;
-        else if (plug->pl.curr == 0) next_index = plug->pl.count - 1;
-        else                         next_index = plug->pl.curr - 1;
+
+        if (plug->shuffle_mode) {
+            next_index = rand() % plug->pl.count;
+            while (next_index == plug->pl.prev) next_index = rand() % plug->pl.count;
+        } else if (plug->pl.curr == 0)          next_index = plug->pl.count - 1;
+        else                                    next_index = plug->pl.curr - 1;
 
         Song* song = plug_get_nth_song(plug, next_index);
 
@@ -393,14 +394,21 @@ void plug_init_track(Plug* plug, bool cpydef)
     };
     if (cpydef) {
         plug->seek_track.cursor = (Track_Cursor) {
-            .center = plug->seek_track.start_pos,
-            .start_angle = 0,
-            .end_angle = 365,
+            .rect = (Rectangle) {
+                .x = plug->seek_track.start_pos.x,
+                .y = plug->seek_track.start_pos.y - GetScreenHeight() * 0.006,
+                .width = GetScreenWidth() * 0.008,
+                .height = GetScreenHeight() * 0.01
+            },
+            .roundness = 1.f,
+            .segments = 30,
             .color = WHITE,
-            .radius = 6.f,
-            .segments = 30
         };
-    } else plug->seek_track.cursor.center.y = plug->seek_track.start_pos.y;
+    } else plug->seek_track.cursor.rect = (Rectangle) {
+        .y = plug->seek_track.start_pos.y - GetScreenHeight() * 0.006,
+        .width = GetScreenWidth() * 0.008,
+        .height = GetScreenHeight() * 0.01
+    };
 }
 
 void plug_init_shuffle_texture(Plug *plug)
