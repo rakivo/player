@@ -7,7 +7,15 @@
 
 #include "plug.h"
 
-#define DEBUG
+#ifdef DEBUG
+#   define SHUFFLE_PATH "../resources/shuffle.png"
+#   define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
+#   define FONT_PATH "../resources/Alegreya-Regular.ttf"
+#else
+#   define SHUFFLE_PATH "resources/shuffle.png"
+#   define CROSSED_SHUFFLE_PATH "resources/crossed_shuffle.png"
+#   define FONT_PATH "resources/Alegreya-Regular.ttf"
+#endif
 
 /* TODO:
     Even smarter shuffle system.

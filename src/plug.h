@@ -16,10 +16,6 @@
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 600
 
-#define SHUFFLE_PATH "../resources/shuffle.png"
-#define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
-#define FONT_PATH "../resources/Alegreya-Regular.ttf"
-
 #define WAITING_MESSAGE   "Drag & Drop Music Here"
 #define NAME_TEXT_MESSAGE "Song name: "
 #define TIME_TEXT_MESSAGE "Time played: "
