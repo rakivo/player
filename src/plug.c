@@ -145,10 +145,10 @@ void plug_draw_main_screen(Plug* plug)
 
             case DISABLE_SHUFFLE_MODE:
                 DrawTextureEx(plug->crossed_shuffle_t.texture,
-                              plug->shuffle_t.position,
-                              plug->shuffle_t.rotation,
-                              plug->shuffle_t.scale,
-                              plug->shuffle_t.color);
+                              plug->crossed_shuffle_t.position,
+                              plug->crossed_shuffle_t.rotation,
+                              plug->crossed_shuffle_t.scale,
+                              plug->crossed_shuffle_t.color);
                 break;
 
             default: assert(NULL && "Unexpected case");
