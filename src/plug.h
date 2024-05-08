@@ -17,6 +17,7 @@
 #define WINDOW_HEIGHT 600
 
 #define SHUFFLE_PATH "../resources/shuffle.png"
+#define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
 #define FONT_PATH "../resources/Alegreya-Regular.ttf"
 
 #define WAITING_MESSAGE   "Drag & Drop Music Here"
@@ -64,7 +65,7 @@ typedef struct {
     float scale;
 
     Color color;
-} Shuffle_Texture;
+} Texture_Label;
 
 typedef struct {
     Vector2 center;
@@ -105,6 +106,7 @@ typedef struct {
 
     size_t cap;
     size_t curr;
+    size_t prev;
     size_t count;
 
     Song prev_song;
@@ -162,8 +164,10 @@ typedef struct {
 
     bool shuffle_mode;
     bool shuffle_texture_loaded;
+    bool crossed_shuffle_texture_loaded;
 
-    Shuffle_Texture shuffle_t;
+    Texture_Label shuffle_t;
+    Texture_Label crossed_shuffle_t;
 
     Music curr_music;
 
@@ -183,6 +187,8 @@ Vector2 center_text(const Vector2);
 
 // < =======  + + + ======= >
 
+size_t plug_pull_next_song(Plug* plug);
+
 void plug_handle_keys(Plug*);
 void plug_handle_buttons(Plug*);
 void plug_handle_dropped_files(Plug*);
@@ -201,9 +207,11 @@ Song* plug_get_nth_song(Plug*, const size_t);
 
 void plug_reinit(Plug*);
 
+void plug_init_shuffle_texture(Plug*);
+void plug_init_crossed_shuffle_texture(Plug*q);
+
 void plug_init_popup_msg(Plug*);
 void plug_init_track(Plug*, bool);
-void plug_init_shuffle_texture(Plug*);
 void plug_init_song_name(Plug*, bool);
 void plug_init_song_time(Plug*, bool);
 void plug_init_waiting_for_file_msg(Plug*);
