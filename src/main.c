@@ -7,7 +7,7 @@
 
 #define LIB_PLUG_PATH "../build/libplug.so"
 
-const bool REINIT = 1;
+const bool REINIT = 0;
 
 Plug plug = {0};
 
