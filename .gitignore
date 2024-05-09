@@ -1,4 +1,5 @@
 music
 play
 build
-src/minheap.c
+src/minheap.cpp
+src/rand.c

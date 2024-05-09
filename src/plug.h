@@ -46,6 +46,22 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 
 #define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
 
+#define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
+
+#define DEBUG
+
+#ifdef DEBUG
+#   define LIB_PLUG_PATH "../build/libplug.so"
+#   define SHUFFLE_PATH "../resources/shuffle.png"
+#   define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
+#   define FONT_PATH "../resources/Alegreya-Regular.ttf"
+#else
+#   define LIB_PLUG_PATH "build/libplug.so"
+#   define SHUFFLE_PATH "resources/shuffle.png"
+#   define CROSSED_SHUFFLE_PATH "resources/crossed_shuffle.png"
+#   define FONT_PATH "resources/Alegreya-Regular.ttf"
+#endif
+
 typedef struct {
     char text[TEXT_CAP];
     Vector2 text_size;
@@ -152,6 +168,8 @@ typedef struct {
 
     enum Popup_Msg popup_msg_type;
 
+    bool font_loaded;
+
     bool music_loaded;
     bool music_paused;
 
@@ -180,37 +198,44 @@ Vector2 center_text(const Vector2);
 
 // < =======  + + + ======= >
 
-size_t plug_pull_next_song(Plug* plug);
+size_t plug_pull_next_song(void);
+size_t plug_pull_prev_song(void);
 
-void plug_handle_keys(Plug*);
-void plug_handle_buttons(Plug*);
-void plug_handle_dropped_files(Plug*);
+void plug_handle_keys(void);
+void plug_handle_buttons(void);
+void plug_handle_dropped_files(void);
 
-void plug_draw_main_screen(Plug*);
-void plug_draw_waiting_for_file_screen(Plug*);
+void plug_draw_main_screen(void);
+void plug_draw_waiting_for_file_screen(void);
 
-bool plug_load_music(Plug*, Song*);
+bool plug_load_music(Song*);
 
-bool plug_next_song(Plug*);
+bool plug_play_next_song(void);
 
-void plug_print_songs(Plug*);
+void plug_print_songs(void);
 
-Song* plug_get_curr_song(Plug*);
-Song* plug_get_nth_song(Plug*, const size_t);
+Song* plug_get_curr_song(void);
+Song* plug_get_nth_song(const size_t);
 
-void plug_reinit(Plug*);
+void plug_load_all(void);
+void plug_unload_all(void);
+void plug_unload_music(void);
 
-void plug_init_shuffle_texture(Plug*);
-void plug_init_crossed_shuffle_texture(Plug*q);
+void plug_reinit(void);
 
-void plug_init_popup_msg(Plug*);
-void plug_init_track(Plug*, bool);
-void plug_init_song_name(Plug*, bool);
-void plug_init_song_time(Plug*, bool);
-void plug_init_waiting_for_file_msg(Plug*);
+void plug_init_shuffle_texture(void);
+void plug_init_crossed_shuffle_texture(void);
 
-typedef void (*plug_init_t)(Plug*);
-typedef void (*plug_free_t)(Plug*);
-typedef void (*plug_frame_t)(Plug*);
+void plug_init_popup_msg(void);
+void plug_init_track(bool);
+void plug_init_song_name(bool);
+void plug_init_song_time(bool);
+void plug_init_waiting_for_file_msg(void);
+
+typedef void  (*plug_init_t)(void);
+typedef void  (*plug_free_t)(void);
+typedef void  (*plug_frame_t)(void);
+typedef Plug* (*plug_pre_reload_t)(void);
+typedef void  (*plug_post_reload_t)(Plug*);
 
 #endif // PLUG_H

@@ -1,7 +1,7 @@
 CC = clang
 
 CLIBS = -lm -lraylib
-CFLAGS = -Wall -Wextra -Werror -pedantic -fPIC -ferror-limit=100
+CFLAGS = -Wall -Wextra -Werror -pedantic -ggdb -fPIC -ferror-limit=100
 LDFLAGS = -shared
 
 BIN = build/out

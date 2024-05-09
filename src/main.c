@@ -1,21 +1,20 @@
 #include <stdio.h>
+#include <stdlib.h>
+
+#include <time.h>
 #include <dlfcn.h>
 
 #include <raylib.h>
 
 #include "plug.h"
 
-#define LIB_PLUG_PATH "../build/libplug.so"
-
-const bool REINIT = 0;
-
-Plug plug = {0};
-
 void* libplug;
 
 plug_init_t plug_init;
 plug_free_t plug_free;
 plug_frame_t plug_frame;
+plug_pre_reload_t plug_pre_reload;
+plug_post_reload_t plug_post_reload;
 
 bool plug_reload(void)
 {
@@ -31,6 +30,8 @@ bool plug_reload(void)
     *(void**) (&plug_init)  = dlsym(libplug, "plug_init");
     *(void**) (&plug_free)  = dlsym(libplug, "plug_free");
     *(void**) (&plug_frame) = dlsym(libplug, "plug_frame");
+    *(void**) (&plug_pre_reload) = dlsym(libplug, "plug_pre_reload");
+    *(void**) (&plug_post_reload) = dlsym(libplug, "plug_post_reload");
 
     if (!plug_init || !plug_free || !plug_frame) {
         TraceLog(LOG_ERROR, "Failed to find functions in %s: %s", LIB_PLUG_PATH, dlerror());
@@ -52,17 +53,21 @@ int main(void)
     SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
     if (!plug_reload()) return 1;
-    plug_init(&plug);
+    plug_init();
+
+    srand(time(NULL));
 
     while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_R)) {
+            Plug* plug = plug_pre_reload();
             if (!plug_reload()) return 1;
-            if (REINIT) plug_init(&plug);
+            plug_post_reload(plug);
         }
-        plug_frame(&plug);
+
+        plug_frame();
     }
 
-    plug_free(&plug);
+    plug_free();
     CloseAudioDevice();
     CloseWindow();
 
