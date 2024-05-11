@@ -95,7 +95,7 @@ void plug_free(void)
 {
     plug_unload_all();
     free(plug->pl.songs);
-    TraceLog(LOG_INFO, "Freed allocated songs");
+    TraceLog(LOG_INFO, "FREED ALLOCATED SONGS");
 }
 
 void plug_reinit(void)

@@ -49,6 +49,16 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 
 #define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
 
+#define FN(name) name##_t name
+
+#define FN_SYM(name, lib, do_)                             \
+    *(void**) (&name)  = dlsym(lib, #name);                \
+    if (name == NULL) {                                    \
+        TraceLog(LOG_ERROR, "Failed to find %s in %s: %s", \
+                #name, LIB_PLUG_PATH, dlerror());          \
+        do_;                                               \
+    }
+
 #define TEXTURE(name)           \
     Texture_Label name##_t;     \
     bool name##_texture_loaded  \

@@ -10,11 +10,11 @@
 
 void* libplug;
 
-plug_init_t plug_init;
-plug_free_t plug_free;
-plug_frame_t plug_frame;
-plug_pre_reload_t plug_pre_reload;
-plug_post_reload_t plug_post_reload;
+FN(plug_init);
+FN(plug_free);
+FN(plug_frame);
+FN(plug_pre_reload);
+FN(plug_post_reload);
 
 bool plug_reload(void)
 {
@@ -27,16 +27,11 @@ bool plug_reload(void)
     }
     dlerror();
 
-    *(void**) (&plug_init)  = dlsym(libplug, "plug_init");
-    *(void**) (&plug_free)  = dlsym(libplug, "plug_free");
-    *(void**) (&plug_frame) = dlsym(libplug, "plug_frame");
-    *(void**) (&plug_pre_reload) = dlsym(libplug, "plug_pre_reload");
-    *(void**) (&plug_post_reload) = dlsym(libplug, "plug_post_reload");
-
-    if (!plug_init || !plug_free || !plug_frame) {
-        TraceLog(LOG_ERROR, "Failed to find functions in %s: %s", LIB_PLUG_PATH, dlerror());
-        return false;
-    }
+    FN_SYM(plug_init, libplug, return false);
+    FN_SYM(plug_free, libplug, return false);
+    FN_SYM(plug_frame, libplug, return false);
+    FN_SYM(plug_pre_reload, libplug, return false);
+    FN_SYM(plug_post_reload, libplug, return false);
     
     TraceLog(LOG_INFO, "Reloaded libplug successfully");
 
@@ -45,10 +40,12 @@ bool plug_reload(void)
 
 int main(void)
 {
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     SetTargetFPS(60);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Player");
     InitAudioDevice();
+
     SetExitKey(KEY_Q);
     SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
