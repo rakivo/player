@@ -36,8 +36,8 @@ void plug_init(void)
     plug_init_track(true);
     plug_init_text_labels(true);
     plug_init_constant_text_labels();
-    plug->music_volume = DEFAULT_MUSIC_VOLUME;
     plug->app_state = WAITING_FOR_FILE;
+    plug->music_volume = DEFAULT_MUSIC_VOLUME;
 }
 
 Plug* plug_pre_reload(void)
@@ -61,6 +61,7 @@ void plug_load_all(void)
     SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
     plug_init_textures();
     Song* curr_song = plug_get_curr_song();
+    TraceLog(LOG_INFO, "LOADING MUSIC STREAM");
     if (curr_song && plug_load_music(curr_song)) {
         SetMusicVolume(plug->curr_music, plug->music_volume);
         SeekMusicStream(plug->curr_music, plug->pl.time_played);
@@ -181,14 +182,7 @@ void plug_draw_main_screen(void)
             &&  plug->popup_msg_type != DISABLE_SHUFFLE_MODE
             &&  plug->popup_msg_type != MUTE_MUSIC
             &&  plug->popup_msg_type != UNMUTE_MUSIC)
-            {
-                DrawTextEx(plug->font,
-                       plug->popup_msg.text,
-                       plug->popup_msg.text_pos,
-                       plug->font_size,
-                       plug->font_spacing,
-                       RAYWHITE);
-            }
+                DRAW_TEXT_EX(popup_msg, RAYWHITE);
         } else plug->show_popup_msg = false;
     }
 
@@ -214,15 +208,7 @@ void plug_handle_dropped_files(void)
             }
         }
 
-        for (size_t i = plug->pl.count - 1; i >= 0; --i) {
-#ifdef DEBUG
-            TraceLog(LOG_INFO, "plug->pl.songs[%zu] file_path: %s", i, plug->pl.songs[i].path);
-#endif
-            if (plug_load_music(&plug->pl.songs[i])) {
-                plug->pl.curr = i;
-                break;
-            }
-        }
+        if (!plug->music_loaded) plug_load_music(&plug->pl.songs[0]);
 
 #ifdef DEBUG
         TraceLog(LOG_INFO, "Curr: %zu, prev: %zu, count: %zu\n", plug->pl.curr, plug->pl.prev, plug->pl.count);
@@ -552,10 +538,10 @@ bool is_music(const char* path)
 
 bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
 {
-    const float track_padding = seek_track.thickness*2;
+    const float track_pad = seek_track.thickness*2;
     return (mouse_pos.x >= seek_track.start_pos.x) && (mouse_pos.x <= seek_track.end_pos.x) &&
-           (mouse_pos.y >= (seek_track.start_pos.y - seek_track.thickness - track_padding)) &&
-           (mouse_pos.y <= (seek_track.end_pos.y + seek_track.thickness + track_padding));
+           (mouse_pos.y >= (seek_track.start_pos.y - seek_track.thickness - track_pad)) &&
+           (mouse_pos.y <= (seek_track.end_pos.y + seek_track.thickness + track_pad));
 }
 
 Vector2 center_text(const Vector2 text_size)
@@ -566,19 +552,19 @@ Vector2 center_text(const Vector2 text_size)
     };
 }
 
-void get_song_name(const char* input, char* output, const size_t output_size)
+void get_song_name(const char* input, char* o, const size_t o_n)
 {
-    size_t input_len = strlen(input);
-    size_t out_len = 0;
+    size_t n = strlen(input);
+    size_t end = 0;
 
-    for (size_t i = input_len - 1; i > 0 && input[i] != DELIM; --i)
-        if (out_len < output_size - 1)
-            output[out_len++] = input[i];
+    for (size_t i = n - 1; i > 0 && input[i] != DELIM; --i)
+        if (end < o_n - 1)
+            o[end++] = input[i];
 
-    output[out_len] = '\0';
-    for (size_t i = 0; i < out_len / 2; i++) {
-        char temp = output[i];
-        output[i] = output[out_len - i - 1];
-        output[out_len - i - 1] = temp;
+    o[end] = '\0';
+    for (size_t i = 0; i < end / 2; i++) {
+        char t = o[i];
+        o[i] = o[end - i - 1];
+        o[end - i - 1] = t;
     }
 }
