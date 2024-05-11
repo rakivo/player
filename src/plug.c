@@ -79,22 +79,10 @@ void plug_unload_all(void)
 {
     TraceLog(LOG_INFO, "UNLOADING ALL");
     if (IsMusicStreamPlaying(plug->curr_music) && plug->music_loaded) plug_unload_music();
-    if (plug->shuffle_texture_loaded) {
-        UnloadTexture(plug->shuffle_t.texture);
-        plug->shuffle_texture_loaded = false;        
-    }
-    if (plug->crossed_shuffle_texture_loaded) {
-        UnloadTexture(plug->crossed_shuffle_t.texture);
-        plug->crossed_shuffle_texture_loaded = false;        
-    }
-    if (plug->muted_texture_loaded) {
-        UnloadTexture(plug->muted_t.texture);
-        plug->muted_texture_loaded = false;        
-    }
-    if (plug->unmuted_texture_loaded) {
-        UnloadTexture(plug->unmuted_t.texture);
-        plug->unmuted_texture_loaded = false;        
-    }
+    UNLOAD_TEXTURE(muted);
+    UNLOAD_TEXTURE(unmuted);
+    UNLOAD_TEXTURE(shuffle);
+    UNLOAD_TEXTURE(crossed_shuffle);
     if (plug->font_loaded) {
         UnloadFont(plug->font);
         plug->font_loaded = false;
@@ -158,36 +146,15 @@ void plug_frame(void)
 
     BeginDrawing();
         ClearBackground(plug->background_color);
-        if (plug->app_state == WAITING_FOR_FILE) plug_draw_waiting_for_file_screen();
+        if (plug->app_state == WAITING_FOR_FILE) DRAW_TEXT_EX(waiting_for_file_msg, RAYWHITE);
         else if (plug->app_state == MAIN_SCREEN) plug_draw_main_screen();
     EndDrawing();
 }
 
-void plug_draw_waiting_for_file_screen(void)
-{
-    DrawTextEx(plug->font,
-               plug->waiting_for_file_msg.text,
-               plug->waiting_for_file_msg.text_pos,
-               plug->font_size,
-               plug->font_spacing,
-               RAYWHITE);
-}
-
 void plug_draw_main_screen(void)
 {
-    DrawTextEx(plug->font,
-               plug->song_name.text,
-               plug->song_name.text_pos,
-               plug->font_size,
-               plug->font_spacing,
-               RAYWHITE);
-
-    DrawTextEx(plug->font,
-               plug->song_time.text,
-               plug->song_time.text_pos,
-               plug->font_size,
-               plug->font_spacing,
-               RAYWHITE);
+    DRAW_TEXT_EX(song_name, RAYWHITE);
+    DRAW_TEXT_EX(song_time, RAYWHITE);
 
     if (plug->show_popup_msg) {
         if (GetTime() - plug->popup_msg_start_time < POPUP_MSG_DURATION) {
@@ -201,33 +168,12 @@ void plug_draw_main_screen(void)
             case NEXT_SONG: strcpy(plug->popup_msg.text, ">"); break;
             case PREV_SONG: strcpy(plug->popup_msg.text, "<"); break;
 
-            case ENABLE_SHUFFLE_MODE:
-                DrawTextureEx(plug->shuffle_t.texture,
-                              plug->shuffle_t.position,
-                              plug->shuffle_t.rotation,
-                              plug->shuffle_t.scale,
-                              plug->shuffle_t.color); break;
+            case ENABLE_SHUFFLE_MODE: DRAW_TEXTURE_EX(shuffle); break;
 
-            case DISABLE_SHUFFLE_MODE:
-                DrawTextureEx(plug->crossed_shuffle_t.texture,
-                              plug->crossed_shuffle_t.position,
-                              plug->crossed_shuffle_t.rotation,
-                              plug->crossed_shuffle_t.scale,
-                              plug->crossed_shuffle_t.color); break;
+            case DISABLE_SHUFFLE_MODE: DRAW_TEXTURE_EX(crossed_shuffle); break;
 
-
-            case MUTE_MUSIC: DrawTextureEx(plug->muted_t.texture,
-                                           plug->muted_t.position,
-                                           plug->muted_t.rotation,
-                                           plug->muted_t.scale,
-                                           plug->muted_t.color);  break;
-
-
-            case UNMUTE_MUSIC: DrawTextureEx(plug->unmuted_t.texture,
-                                             plug->unmuted_t.position,
-                                             plug->unmuted_t.rotation,
-                                             plug->unmuted_t.scale,
-                                             plug->unmuted_t.color);  break;
+            case MUTE_MUSIC: DRAW_TEXTURE_EX(muted); break;
+            case UNMUTE_MUSIC: DRAW_TEXTURE_EX(unmuted); break;
 
             default: assert(NULL && "Unexpected case");
             }
@@ -246,15 +192,8 @@ void plug_draw_main_screen(void)
         } else plug->show_popup_msg = false;
     }
 
-    DrawLineEx(plug->seek_track.start_pos,
-               plug->seek_track.end_pos,
-               plug->seek_track.thickness,
-               plug->seek_track.color);
-
-    DrawRectangleRounded(plug->seek_track.cursor.rect,
-                         plug->seek_track.cursor.roundness,
-                         plug->seek_track.cursor.segments,
-                         plug->seek_track.cursor.color);
+    DRAW_LINE_EX(seek_track);
+    DRAW_RECTANGLE_ROUNDED(seek_track.cursor);
 }
 
 void plug_handle_dropped_files(void)
@@ -298,24 +237,15 @@ void plug_handle_buttons(void)
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mouse_pos = GetMousePosition();
 
-        if (is_mouse_on_track(mouse_pos, plug->seek_track)) {
+        if (is_mouse_on_track(mouse_pos, plug->seek_track) && IsMusicStreamPlaying(plug->curr_music)) {
+            plug->seek_track.cursor.rect.x = mouse_pos.x;
 
-#ifdef DEBUG
-            TraceLog(LOG_INFO, "Track Start pos x: %f, y: %f", plug->seek_track.start_pos.x, plug->seek_track.start_pos.y);
-            TraceLog(LOG_INFO, "Track End pos x: %f, y: %f", plug->seek_track.end_pos.x, plug->seek_track.end_pos.y);
-            TraceLog(LOG_INFO, "Mouse clicked on the track at x: %f, y: %f", mouse_pos.x, mouse_pos.y);
-#endif
+            const float position = (mouse_pos.x
+                - plug->seek_track.start_pos.x)
+                / (plug->seek_track.end_pos.x - plug->seek_track.start_pos.x)
+                * plug->pl.length;
 
-            if (IsMusicStreamPlaying(plug->curr_music)) {
-                plug->seek_track.cursor.rect.x = mouse_pos.x;
-
-                const float position = (mouse_pos.x
-                    - plug->seek_track.start_pos.x)
-                    / (plug->seek_track.end_pos.x - plug->seek_track.start_pos.x)
-                    * plug->pl.length;
-
-                SeekMusicStream(plug->curr_music, position);
-            }
+            SeekMusicStream(plug->curr_music, position);
         }
     }
 }
@@ -400,10 +330,11 @@ void plug_handle_keys(void)
             TraceLog(LOG_INFO, "Shuffle mode enabled");
         }
 
+        strcpy(plug->popup_msg.text, "shuffling mode enabled");
+
         plug->shuffle_mode = !plug->shuffle_mode;
         plug->show_popup_msg = true;
         plug->popup_msg_start_time = GetTime();
-        strcpy(plug->popup_msg.text, "shuffling mode enabled");
     } else if (IsKeyPressed(KEY_M) && IsMusicStreamPlaying(plug->curr_music)) {
         if (plug->music_muted) {
             SetMusicVolume(plug->curr_music, plug->music_volume);
@@ -438,6 +369,22 @@ void plug_init_text_labels(bool cpydef)
     INIT_TEXT_LABEL(song_time, TIME_TEXT_MESSAGE, song_time_margin);
 }
 
+void plug_init_textures(void)
+{
+    const Vector2 position = { // Basically sizes of all of the textures are equal: 256x256
+        .x = (GetScreenWidth() - 256 / 2) / 2,
+        .y = (GetScreenHeight() - 256 / 2) / 2,
+    };
+    const float rotation = 0.f;
+    const float scale = 0.5;
+    const Color color = WHITE;
+
+    INIT_TEXTURE(muted, MUTED_PATH);
+    INIT_TEXTURE(unmuted, UNMUTED_PATH);
+    INIT_TEXTURE(shuffle, SHUFFLE_PATH);
+    INIT_TEXTURE(crossed_shuffle, CROSSED_SHUFFLE_PATH);
+}
+
 void plug_init_track(bool cpydef)
 {
     plug->seek_track.track_margin_bottom = GetScreenHeight() / 13;
@@ -468,22 +415,6 @@ void plug_init_track(bool cpydef)
         .width = GetScreenWidth() * 0.01,
         .height = GetScreenHeight() * 0.015,
     };
-}
-
-void plug_init_textures(void)
-{
-    const Vector2 position = { // Basically sizes of all of the textures are equal: 256x256
-        .x = (GetScreenWidth() - 256 / 2) / 2,
-        .y = (GetScreenHeight() - 256 / 2) / 2,
-    };
-    const float rotation = 0.f;
-    const float scale = 0.5;
-    const Color color = WHITE;
-
-    INIT_TEXTURE(muted, MUTED_PATH);
-    INIT_TEXTURE(unmuted, UNMUTED_PATH);
-    INIT_TEXTURE(shuffle, SHUFFLE_PATH);
-    INIT_TEXTURE(crossed_shuffle, CROSSED_SHUFFLE_PATH);
 }
 
 Song* plug_get_curr_song(void)
@@ -621,7 +552,7 @@ bool is_music(const char* path)
 
 bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
 {
-    const float track_padding = seek_track.thickness * 2;
+    const float track_padding = seek_track.thickness*2;
     return (mouse_pos.x >= seek_track.start_pos.x) && (mouse_pos.x <= seek_track.end_pos.x) &&
            (mouse_pos.y >= (seek_track.start_pos.y - seek_track.thickness - track_padding)) &&
            (mouse_pos.y <= (seek_track.end_pos.y + seek_track.thickness + track_padding));

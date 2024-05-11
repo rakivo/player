@@ -49,6 +49,10 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 
 #define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
 
+#define TEXTURE(name)           \
+    Texture_Label name##_t;     \
+    bool name##_texture_loaded  \
+
 #define INIT_TEXTURE(texture_, path)                                             \
     if (!plug->texture_##_texture_loaded) {                                      \
         plug->texture_##_t.texture = LoadTexture(path);                          \
@@ -73,6 +77,40 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
     plug->label_.text_pos = center_text(plug->label_.text_size);                      \
     plug->label_.text_pos.x = plug->label_.text_pos.x / 35;                           \
     plug->label_.text_pos.y = GetScreenHeight() - margin;                             \
+
+#define UNLOAD_TEXTURE(name)                   \
+    if (plug->name##_texture_loaded) {         \
+        UnloadTexture(plug->name##_t.texture); \
+        plug->name##_texture_loaded = false;   \
+    }
+
+#define DRAW_TEXT_EX(name, color) do {     \
+    DrawTextEx(plug->font,                 \
+           plug->name.text,                \
+           plug->name.text_pos,            \
+           plug->font_size,                \
+           plug->font_spacing,             \
+           color);                         \
+} while (0)                                \
+
+#define DRAW_TEXTURE_EX(name)              \
+    DrawTextureEx(plug->name##_t.texture,  \
+                  plug->name##_t.position, \
+                  plug->name##_t.rotation, \
+                  plug->name##_t.scale,    \
+                  plug->name##_t.color)
+
+#define DRAW_LINE_EX(name)                 \
+    DrawLineEx(plug->name.start_pos,       \
+               plug->name.end_pos,         \
+               plug->name.thickness,       \
+               plug->name.color);          \
+
+#define DRAW_RECTANGLE_ROUNDED(name)       \
+    DrawRectangleRounded(plug->name.rect,  \
+               plug->name.roundness,       \
+               plug->name.segments,        \
+               plug->name.color);          \
 
 #define DEBUG
 
@@ -209,17 +247,10 @@ typedef struct {
 
     bool shuffle_mode;
  
-    bool shuffle_texture_loaded;
-    bool crossed_shuffle_texture_loaded;
-
-    Texture_Label shuffle_t;
-    Texture_Label crossed_shuffle_t;
-
-    bool muted_texture_loaded;
-    bool unmuted_texture_loaded;
-
-    Texture_Label muted_t;
-    Texture_Label unmuted_t;
+    TEXTURE(muted);
+    TEXTURE(unmuted);
+    TEXTURE(shuffle);
+    TEXTURE(crossed_shuffle);
 
     Music curr_music;
 
@@ -247,7 +278,6 @@ void plug_handle_buttons(void);
 void plug_handle_dropped_files(void);
 
 void plug_draw_main_screen(void);
-void plug_draw_waiting_for_file_screen(void);
 
 bool plug_load_music(Song*);
 
@@ -270,7 +300,6 @@ void plug_init_text_labels(bool);
 void plug_init_constant_text_labels(void);
 
 void plug_init_track(bool);
-void plug_init_waiting_for_file_msg(void);
 
 typedef void  (*plug_init_t)(void);
 typedef void  (*plug_free_t)(void);
