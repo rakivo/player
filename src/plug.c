@@ -21,9 +21,7 @@
 #   define DELIM '/'
 #endif
 
-#define TEXT_CAP 1024
-
-#define WAITING_MESSAGE   "Drag & Drop Music Here"
+#define WAITING_MESSAGE "Drag & Drop Music Here"
 #define NAME_TEXT_MESSAGE "Song name: "
 #define TIME_TEXT_MESSAGE "Time played: "
 
@@ -33,9 +31,9 @@
 
 #define POPUP_MSG_DURATION 0.5
 
-#define SUPPORTED_FORMATS_CAP 6
-
+#define TEXT_CAP 1024
 #define DA_INIT_CAP 256
+#define SUPPORTED_FORMATS_CAP 6
 
 #define DA_PUSH(vec, x) do {                                                         \
     assert((vec).count >= 0  && "Count can't be negative");                          \
@@ -508,18 +506,16 @@ void plug_handle_keys(void)
         plug->music_paused = !plug->music_paused;
         if (plug->music_paused) PauseMusicStream(plug->curr_music);
         else                    ResumeMusicStream(plug->curr_music);
-    } else if (IsKeyPressed(KEY_LEFT)) {
-        if (IsMusicStreamPlaying(plug->curr_music)) {
-            float curr_pos = GetMusicTimePlayed(plug->curr_music);
-            float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
-            SeekMusicStream(plug->curr_music, future_pos);
-            UPDATE_POPUP_MSG(SEEK_FORWARD);
-        }
+    } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->curr_music)) {
+        UPDATE_POPUP_MSG(SEEK_BACKWARD);
+        float curr_pos = GetMusicTimePlayed(plug->curr_music);
+        float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
+        SeekMusicStream(plug->curr_music, future_pos);
     } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->curr_music)) {
+        UPDATE_POPUP_MSG(SEEK_FORWARD);
         float curr_pos = GetMusicTimePlayed(plug->curr_music);
         float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->curr_music));
         SeekMusicStream(plug->curr_music, future_pos);
-        UPDATE_POPUP_MSG(SEEK_BACKWARD);
     } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->curr_music)) {
         UPDATE_POPUP_MSG(VOLUME_UP);
         plug->music_volume = MIN(plug->music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
