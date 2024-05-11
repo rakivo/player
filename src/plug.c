@@ -502,60 +502,81 @@ void plug_handle_buttons(void)
 
 void plug_handle_keys(void)
 {
-    if (IsKeyPressed(KEY_SPACE)) {
+    switch (GetKeyPressed()) {
+    case KEY_SPACE: if (IsMusicStreamPlaying(plug->curr_music)) {
         plug->music_paused = !plug->music_paused;
         if (plug->music_paused) PauseMusicStream(plug->curr_music);
         else                    ResumeMusicStream(plug->curr_music);
-    } else if (IsKeyPressed(KEY_LEFT) && IsMusicStreamPlaying(plug->curr_music)) {
+        break;
+    }
+
+    case KEY_LEFT: if (IsMusicStreamPlaying(plug->curr_music)) {
         UPDATE_POPUP_MSG(SEEK_BACKWARD);
-        float curr_pos = GetMusicTimePlayed(plug->curr_music);
-        float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
-        SeekMusicStream(plug->curr_music, future_pos);
-    } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->curr_music)) {
+        {
+            float curr_pos = GetMusicTimePlayed(plug->curr_music);
+            float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
+            SeekMusicStream(plug->curr_music, future_pos);
+        }
+        break;
+    }
+
+    case KEY_RIGHT: if (IsMusicStreamPlaying(plug->curr_music)) {
         UPDATE_POPUP_MSG(SEEK_FORWARD);
-        float curr_pos = GetMusicTimePlayed(plug->curr_music);
-        float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->curr_music));
-        SeekMusicStream(plug->curr_music, future_pos);
-    } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->curr_music)) {
+        {
+            float curr_pos = GetMusicTimePlayed(plug->curr_music);
+            float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->curr_music));
+            SeekMusicStream(plug->curr_music, future_pos);
+        }
+        break;
+    }
+
+    case KEY_UP: if (IsMusicStreamPlaying(plug->curr_music)) {
         UPDATE_POPUP_MSG(VOLUME_UP);
         plug->music_volume = MIN(plug->music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
         SetMusicVolume(plug->curr_music, plug->music_volume);
-    } else if (IsKeyPressed(KEY_DOWN) && IsMusicStreamPlaying(plug->curr_music)) {
+        break;
+    }
+
+    case KEY_DOWN: if (IsMusicStreamPlaying(plug->curr_music)) {
         UPDATE_POPUP_MSG(VOLUME_DOWN);
         plug->music_volume = MAX(plug->music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
         SetMusicVolume(plug->curr_music, plug->music_volume);
-    } else if (IsKeyPressed(KEY_N)) {
+        break;
+    }
+
+    case KEY_N:
         UPDATE_POPUP_MSG(NEXT_SONG);
-
-        size_t next_index = plug_pull_next_song();
-        Song* song = plug_get_nth_song(next_index);
-
+        {
+            size_t next_index = plug_pull_next_song();
+            Song* song = plug_get_nth_song(next_index);
 #ifdef DEBUG
-        if (!song) TraceLog(LOG_ERROR, "Next song is NULL, curr: %zu", next_index);
+            if (!song) TraceLog(LOG_ERROR, "Next song is NULL, curr: %zu", next_index);
 #endif
-
-        if (song && plug_load_music(song)) {
-            plug->pl.prev = plug->pl.curr;
-            TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr = next_index);
-            PlayMusicStream(plug->curr_music);
+            if (song && plug_load_music(song)) {
+                plug->pl.prev = plug->pl.curr;
+                TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr = next_index);
+                PlayMusicStream(plug->curr_music);
+            }
         }
-    } else if (IsKeyPressed(KEY_P)) {
+        break;
+
+    case KEY_P:
         UPDATE_POPUP_MSG(PREV_SONG);
-
-        size_t next_index = plug_pull_prev_song();
-
-        Song* song = plug_get_nth_song(next_index);
-
+        {
+            size_t next_index = plug_pull_prev_song();
+            Song* song = plug_get_nth_song(next_index);
 #ifdef DEBUG
-        if (!song) TraceLog(LOG_ERROR, "Prev song is NULL, curr: %zu", next_index);
+            if (!song) TraceLog(LOG_ERROR, "Prev song is NULL, curr: %zu", next_index);
 #endif
-
-        if (song && plug_load_music(song)) {
-            plug->pl.prev = next_index;
-            TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr = next_index);
-            PlayMusicStream(plug->curr_music);
+            if (song && plug_load_music(song)) {
+                plug->pl.prev = next_index;
+                TraceLog(LOG_INFO, "Set curr to: %zu", plug->pl.curr = next_index);
+                PlayMusicStream(plug->curr_music);
+            }
         }
-    } else if (IsKeyPressed(KEY_S)) {
+        break;                
+
+    case KEY_S: if (IsMusicStreamPlaying(plug->curr_music)) {
         plug->shuffle_mode = !plug->shuffle_mode;
         if (plug->shuffle_mode) {
             UPDATE_POPUP_MSG(DISABLE_SHUFFLE_MODE);
@@ -564,7 +585,10 @@ void plug_handle_keys(void)
             UPDATE_POPUP_MSG(ENABLE_SHUFFLE_MODE);
             TraceLog(LOG_INFO, "Shuffle mode enabled");
         }
-    } else if (IsKeyPressed(KEY_M) && IsMusicStreamPlaying(plug->curr_music)) {
+        break;
+    }
+   
+    case KEY_M: if (IsMusicStreamPlaying(plug->curr_music)) {
         plug->music_muted = !plug->music_muted;
         if (!plug->music_muted) {
             SetMusicVolume(plug->curr_music, plug->music_volume);
@@ -575,6 +599,8 @@ void plug_handle_keys(void)
             UPDATE_POPUP_MSG(MUTE_MUSIC);
             TraceLog(LOG_INFO, "Music has been unmuted");
         }
+        break;
+    }
     }
 }
 
