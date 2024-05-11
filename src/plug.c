@@ -514,9 +514,9 @@ void plug_init_textures(void)
     const Color color = WHITE;
 
     INIT_TEXTURE(muted, MUTED_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(unmuted, MUTED_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(shuffle, MUTED_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(crossed_shuffle, MUTED_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(unmuted, UNMUTED_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(shuffle, SHUFFLE_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(crossed_shuffle, CROSSED_SHUFFLE_PATH, position, rotation, scale, color);
 }
 
 Song* plug_get_curr_song(void)
