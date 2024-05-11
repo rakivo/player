@@ -49,6 +49,16 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 
 #define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
 
+#define INIT_TEXTURE(texture_, path, pos, rot, scale, color)                      \
+    if (!plug->texture_##_texture_loaded) {                                       \
+        plug->texture_##_t.texture = LoadTexture(path);                           \
+        plug->texture_##_texture_loaded = true;                                   \
+    }                                                                             \
+    plug->texture_##_t.position = pos;                                            \
+    plug->texture_##_t.rotation = rot;                                            \
+    plug->texture_##_t.scale = scale;                                             \
+    plug->texture_##_t.color = color;
+
 #define DEBUG
 
 #ifdef DEBUG

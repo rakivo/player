@@ -505,23 +505,6 @@ void plug_init_track(bool cpydef)
 
 void plug_init_textures(void)
 {
-    if (!plug->muted_texture_loaded) {
-        plug->muted_t.texture = LoadTexture(MUTED_PATH);
-        plug->muted_texture_loaded = true;
-    }
-    if (!plug->unmuted_texture_loaded) {
-        plug->unmuted_t.texture = LoadTexture(UNMUTED_PATH);
-        plug->unmuted_texture_loaded = true;
-    }
-    if (!plug->shuffle_texture_loaded) {
-        plug->shuffle_t.texture = LoadTexture(SHUFFLE_PATH);
-        plug->shuffle_texture_loaded = true;
-    }
-    if (!plug->crossed_shuffle_texture_loaded) {
-        plug->crossed_shuffle_t.texture = LoadTexture(CROSSED_SHUFFLE_PATH);
-        plug->crossed_shuffle_texture_loaded = true;
-    }
-
     const Vector2 position = { // Basically sizes of all of the textures are equal: 256x256
         .x = (GetScreenWidth() - 256 / 2) / 2,
         .y = (GetScreenHeight() - 256 / 2) / 2,
@@ -530,25 +513,10 @@ void plug_init_textures(void)
     const float scale = 0.5;
     const Color color = WHITE;
 
-    plug->muted_t.position = position;
-    plug->muted_t.rotation = rotation;
-    plug->muted_t.scale = scale;
-    plug->muted_t.color = color;
-
-    plug->unmuted_t.position = position;
-    plug->unmuted_t.rotation = rotation;
-    plug->unmuted_t.scale = scale;
-    plug->unmuted_t.color = color;
-
-    plug->shuffle_t.position = position;
-    plug->shuffle_t.rotation = rotation;
-    plug->shuffle_t.scale = scale;
-    plug->shuffle_t.color = color;
-
-    plug->crossed_shuffle_t.position = position;
-    plug->crossed_shuffle_t.rotation = rotation;
-    plug->crossed_shuffle_t.scale = scale;
-    plug->crossed_shuffle_t.color = color;
+    INIT_TEXTURE(muted, MUTED_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(unmuted, MUTED_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(shuffle, MUTED_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(crossed_shuffle, MUTED_PATH, position, rotation, scale, color);
 }
 
 Song* plug_get_curr_song(void)
