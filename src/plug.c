@@ -241,7 +241,10 @@ void plug_draw_main_screen(void)
             default: assert(NULL && "Unexpected case");
             }
             if (plug->popup_msg_type != ENABLE_SHUFFLE_MODE
-            &&  plug->popup_msg_type != DISABLE_SHUFFLE_MODE) {
+            &&  plug->popup_msg_type != DISABLE_SHUFFLE_MODE
+            &&  plug->popup_msg_type != MUTE_MUSIC
+            &&  plug->popup_msg_type != UNMUTE_MUSIC)
+            {
                 DrawTextEx(plug->font,
                        plug->popup_msg.text,
                        plug->popup_msg.text_pos,
