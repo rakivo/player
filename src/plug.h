@@ -55,7 +55,7 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
     *(void**) (&name)  = dlsym(lib, #name);                \
     if (name == NULL) {                                    \
         TraceLog(LOG_ERROR, "Failed to find %s in %s: %s", \
-                #name, LIB_PLUG_PATH, dlerror());          \
+                 #name, LIB_PLUG_PATH, dlerror());         \
         do_;                                               \
     }
 
@@ -73,6 +73,12 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
     plug->texture_##_t.scale = scale;                                            \
     plug->texture_##_t.color = color;
 
+#define UNLOAD_TEXTURE(name)                   \
+    if (plug->name##_texture_loaded) {         \
+        UnloadTexture(plug->name##_t.texture); \
+        plug->name##_texture_loaded = false;   \
+    }
+
 #define INIT_CONSTANT_TEXT_LABEL(label_)                                         \
     plug->label_.text_size = MeasureTextEx(plug->font, plug->label_.text,        \
                                            plug->font_size, plug->font_spacing); \
@@ -87,12 +93,6 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
     plug->label_.text_pos = center_text(plug->label_.text_size);                      \
     plug->label_.text_pos.x = plug->label_.text_pos.x / 35;                           \
     plug->label_.text_pos.y = GetScreenHeight() - margin;                             \
-
-#define UNLOAD_TEXTURE(name)                   \
-    if (plug->name##_texture_loaded) {         \
-        UnloadTexture(plug->name##_t.texture); \
-        plug->name##_texture_loaded = false;   \
-    }
 
 #define DRAW_TEXT_EX(name, color) do {     \
     DrawTextEx(plug->font,                 \
@@ -121,6 +121,12 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
                plug->name.roundness,       \
                plug->name.segments,        \
                plug->name.color);          \
+
+
+#define UPDATE_POPUP_MSG(type)                  \
+    plug->show_popup_msg = true;                \
+    plug->popup_msg_start_time = GetTime();     \
+    plug->popup_msg_type = type                 \
 
 #define DEBUG
 

@@ -247,35 +247,23 @@ void plug_handle_keys(void)
             float curr_pos = GetMusicTimePlayed(plug->curr_music);
             float future_pos = MAX(curr_pos - DEFAULT_MUSIC_SEEK_STEP, 0.0);
             SeekMusicStream(plug->curr_music, future_pos);
-            plug->show_popup_msg = true;
-            plug->popup_msg_start_time = GetTime();
-            plug->popup_msg_type = SEEK_FORWARD;
+            UPDATE_POPUP_MSG(SEEK_FORWARD);
         }
     } else if (IsKeyPressed(KEY_RIGHT) && IsMusicStreamPlaying(plug->curr_music)) {
         float curr_pos = GetMusicTimePlayed(plug->curr_music);
         float future_pos = MIN(curr_pos + DEFAULT_MUSIC_SEEK_STEP, GetMusicTimeLength(plug->curr_music));
         SeekMusicStream(plug->curr_music, future_pos);
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
-        plug->popup_msg_type = SEEK_BACKWARD;
+        UPDATE_POPUP_MSG(SEEK_BACKWARD);
     } else if (IsKeyPressed(KEY_UP) && IsMusicStreamPlaying(plug->curr_music)) {
-        plug->popup_msg_type = VOLUME_UP;
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
+        UPDATE_POPUP_MSG(VOLUME_UP);
         plug->music_volume = MIN(plug->music_volume + DEFAULT_MUSIC_VOLUME_STEP, 1.f);
         SetMusicVolume(plug->curr_music, plug->music_volume);
-    } else if (IsKeyPressed(KEY_DOWN)) {
-        if (IsMusicStreamPlaying(plug->curr_music)) {
-            plug->popup_msg_type = VOLUME_DOWN;
-            plug->show_popup_msg = true;
-            plug->popup_msg_start_time = GetTime();
-            plug->music_volume = MAX(plug->music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
-            SetMusicVolume(plug->curr_music, plug->music_volume);
-        }
+    } else if (IsKeyPressed(KEY_DOWN) && IsMusicStreamPlaying(plug->curr_music)) {
+        UPDATE_POPUP_MSG(VOLUME_DOWN);
+        plug->music_volume = MAX(plug->music_volume - DEFAULT_MUSIC_VOLUME_STEP, 0.f);
+        SetMusicVolume(plug->curr_music, plug->music_volume);
     } else if (IsKeyPressed(KEY_N)) {
-        plug->popup_msg_type = NEXT_SONG;
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
+        UPDATE_POPUP_MSG(NEXT_SONG);
 
         size_t next_index = plug_pull_next_song();
         Song* song = plug_get_nth_song(next_index);
@@ -290,9 +278,7 @@ void plug_handle_keys(void)
             PlayMusicStream(plug->curr_music);
         }
     } else if (IsKeyPressed(KEY_P)) {
-        plug->popup_msg_type = PREV_SONG;
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
+        UPDATE_POPUP_MSG(PREV_SONG);
 
         size_t next_index = plug_pull_prev_song();
 
@@ -308,32 +294,25 @@ void plug_handle_keys(void)
             PlayMusicStream(plug->curr_music);
         }
     } else if (IsKeyPressed(KEY_S)) {
+        plug->shuffle_mode = !plug->shuffle_mode;
         if (plug->shuffle_mode) {
-            plug->popup_msg_type = DISABLE_SHUFFLE_MODE;
+            UPDATE_POPUP_MSG(DISABLE_SHUFFLE_MODE);
             TraceLog(LOG_INFO, "Shuffle mode disabled");
         } else {
-            plug->popup_msg_type = ENABLE_SHUFFLE_MODE;
+            UPDATE_POPUP_MSG(ENABLE_SHUFFLE_MODE);
             TraceLog(LOG_INFO, "Shuffle mode enabled");
         }
-
-        strcpy(plug->popup_msg.text, "shuffling mode enabled");
-
-        plug->shuffle_mode = !plug->shuffle_mode;
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
     } else if (IsKeyPressed(KEY_M) && IsMusicStreamPlaying(plug->curr_music)) {
-        if (plug->music_muted) {
+        plug->music_muted = !plug->music_muted;
+        if (!plug->music_muted) {
             SetMusicVolume(plug->curr_music, plug->music_volume);
-            plug->popup_msg_type = UNMUTE_MUSIC;
+            UPDATE_POPUP_MSG(UNMUTE_MUSIC);
             TraceLog(LOG_INFO, "Music has been muted");
         } else {
             SetMusicVolume(plug->curr_music, 0.0);
-            plug->popup_msg_type = MUTE_MUSIC;
+            UPDATE_POPUP_MSG(MUTE_MUSIC);
             TraceLog(LOG_INFO, "Music has been unmuted");
         }
-        plug->show_popup_msg = true;
-        plug->popup_msg_start_time = GetTime();
-        plug->music_muted = !plug->music_muted;
     }
 }
 
