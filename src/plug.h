@@ -35,29 +35,44 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 
 #define DA_INIT_CAP 256
 
-#define DA_PUSH(vec, x) do {                                                    \
-    assert((vec).count >= 0  && "Count can't be negative");                     \
-    if ((vec).count >= (vec).cap) {                                             \
-        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                 \
-        (vec).songs = realloc((vec).songs, (vec).cap*sizeof(*(vec).songs));     \
-        assert((vec).songs != NULL && "Buy more RAM lol");                      \
-    }                                                                           \
-    (vec).songs[(vec).count++] = (x);                                           \
+#define DA_PUSH(vec, x) do {                                                     \
+    assert((vec).count >= 0  && "Count can't be negative");                      \
+    if ((vec).count >= (vec).cap) {                                              \
+        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                  \
+        (vec).songs = realloc((vec).songs, (vec).cap*sizeof(*(vec).songs));      \
+        assert((vec).songs != NULL && "Buy more RAM lol");                       \
+    }                                                                            \
+    (vec).songs[(vec).count++] = (x);                                            \
 } while (0)
 
 #define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
 
 #define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
 
-#define INIT_TEXTURE(texture_, path, pos, rot, scale, color)                      \
-    if (!plug->texture_##_texture_loaded) {                                       \
-        plug->texture_##_t.texture = LoadTexture(path);                           \
-        plug->texture_##_texture_loaded = true;                                   \
-    }                                                                             \
-    plug->texture_##_t.position = pos;                                            \
-    plug->texture_##_t.rotation = rot;                                            \
-    plug->texture_##_t.scale = scale;                                             \
+#define INIT_TEXTURE(texture_, path)                                             \
+    if (!plug->texture_##_texture_loaded) {                                      \
+        plug->texture_##_t.texture = LoadTexture(path);                          \
+        plug->texture_##_texture_loaded = true;                                  \
+    }                                                                            \
+    plug->texture_##_t.position = position;                                      \
+    plug->texture_##_t.rotation = rotation;                                      \
+    plug->texture_##_t.scale = scale;                                            \
     plug->texture_##_t.color = color;
+
+#define INIT_CONSTANT_TEXT_LABEL(label_)                                         \
+    plug->label_.text_size = MeasureTextEx(plug->font, plug->label_.text,        \
+                                           plug->font_size, plug->font_spacing); \
+    plug->label_.text_pos = center_text(plug->label_.text_size);
+
+#define INIT_TEXT_LABEL(label_, msg, margin)                                          \
+    if (cpydef) {                                                                     \
+        strcpy(plug->label_.text, msg);                                               \
+        plug->label_.text_size = MeasureTextEx(plug->font, plug->label_.text,         \
+                                               plug->font_size, plug->font_spacing);  \
+    }                                                                                 \
+    plug->label_.text_pos = center_text(plug->label_.text_size);                      \
+    plug->label_.text_pos.x = plug->label_.text_pos.x / 35;                           \
+    plug->label_.text_pos.y = GetScreenHeight() - margin;                             \
 
 #define DEBUG
 
@@ -251,10 +266,10 @@ void plug_reinit(void);
 
 void plug_init_textures(void);
 
-void plug_init_popup_msg(void);
+void plug_init_text_labels(bool);
+void plug_init_constant_text_labels(void);
+
 void plug_init_track(bool);
-void plug_init_song_name(bool);
-void plug_init_song_time(bool);
 void plug_init_waiting_for_file_msg(void);
 
 typedef void  (*plug_init_t)(void);

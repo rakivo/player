@@ -32,12 +32,10 @@ void plug_init(void)
 
     plug_load_all();
 
-    plug_init_popup_msg();
+    plug_init_textures();
     plug_init_track(true);
-    plug_init_song_name(true);
-    plug_init_song_time(true);
-    plug_init_waiting_for_file_msg();
-
+    plug_init_text_labels(true);
+    plug_init_constant_text_labels();
     plug->music_volume = DEFAULT_MUSIC_VOLUME;
     plug->app_state = WAITING_FOR_FILE;
 }
@@ -113,12 +111,10 @@ void plug_free(void)
 
 void plug_reinit(void)
 {
-    plug_init_popup_msg();
-    plug_init_track(false);
-    plug_init_song_name(false);
-    plug_init_song_time(false);
     plug_init_textures();
-    plug_init_waiting_for_file_msg();
+    plug_init_track(false);
+    plug_init_text_labels(false);
+    plug_init_constant_text_labels();
 }
 
 void plug_frame(void)
@@ -424,51 +420,22 @@ void plug_handle_keys(void)
     }
 }
 
-void plug_init_waiting_for_file_msg(void)
+void plug_init_constant_text_labels(void)
 {
     strcpy(plug->waiting_for_file_msg.text, WAITING_MESSAGE);
-    plug->waiting_for_file_msg.text_size = MeasureTextEx(plug->font,
-                                                         plug->waiting_for_file_msg.text,
-                                                         plug->font_size, plug->font_spacing);
+    strcpy(plug->popup_msg.text, "       ");
 
-    plug->waiting_for_file_msg.text_pos = center_text(plug->waiting_for_file_msg.text_size);
+    INIT_CONSTANT_TEXT_LABEL(waiting_for_file_msg);
+    INIT_CONSTANT_TEXT_LABEL(popup_msg);
 }
 
-void plug_init_song_name(bool cpydef)
+void plug_init_text_labels(bool cpydef)
 {
-    if (cpydef) {
-        strcpy(plug->song_name.text, NAME_TEXT_MESSAGE);
-        plug->song_name.text_size = MeasureTextEx(plug->font, plug->song_name.text,
-                                                  plug->font_size, plug->font_spacing);
-    }
+    const int song_name_margin = GetScreenHeight() / 1.01;
+    const int song_time_margin = GetScreenHeight() / 1.1;
 
-    const int margin_top = GetScreenHeight() / 1.01;
-
-    plug->song_name.text_pos = center_text(plug->song_name.text_size);
-    plug->song_name.text_pos.x = plug->song_name.text_pos.x / 35;
-    plug->song_name.text_pos.y = GetScreenHeight() - margin_top;
-}
-
-void plug_init_song_time(bool cpydef)
-{
-    if (cpydef) {
-        strcpy(plug->song_time.text, TIME_TEXT_MESSAGE);
-        plug->song_time.text_size = MeasureTextEx(plug->font, plug->song_time.text,
-                                                  plug->font_size, plug->font_spacing);
-    }
-
-    const int margin_top = GetScreenHeight() / 1.1;
-
-    plug->song_time.text_pos = center_text(plug->song_time.text_size);
-    plug->song_time.text_pos.x = plug->song_time.text_pos.x / 35;
-    plug->song_time.text_pos.y = GetScreenHeight() - margin_top;
-}
-
-void plug_init_popup_msg(void)
-{
-    plug->popup_msg.text_size = MeasureTextEx(plug->font, "       ",
-                                             plug->font_size, plug->font_spacing);
-    plug->popup_msg.text_pos = center_text(plug->popup_msg.text_size);
+    INIT_TEXT_LABEL(song_name, NAME_TEXT_MESSAGE, song_name_margin);
+    INIT_TEXT_LABEL(song_time, TIME_TEXT_MESSAGE, song_time_margin);
 }
 
 void plug_init_track(bool cpydef)
@@ -513,10 +480,10 @@ void plug_init_textures(void)
     const float scale = 0.5;
     const Color color = WHITE;
 
-    INIT_TEXTURE(muted, MUTED_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(unmuted, UNMUTED_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(shuffle, SHUFFLE_PATH, position, rotation, scale, color);
-    INIT_TEXTURE(crossed_shuffle, CROSSED_SHUFFLE_PATH, position, rotation, scale, color);
+    INIT_TEXTURE(muted, MUTED_PATH);
+    INIT_TEXTURE(unmuted, UNMUTED_PATH);
+    INIT_TEXTURE(shuffle, SHUFFLE_PATH);
+    INIT_TEXTURE(crossed_shuffle, CROSSED_SHUFFLE_PATH);
 }
 
 Song* plug_get_curr_song(void)
