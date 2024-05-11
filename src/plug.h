@@ -2,6 +2,7 @@
 #define PLUG_H
 
 #include <stdlib.h>
+
 #include <raylib.h>
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -22,7 +23,7 @@
 
 #define DEFAULT_MUSIC_SEEK_STEP 5.f
 #define DEFAULT_MUSIC_VOLUME_STEP .1
-#define DEFAULT_MUSIC_VOLUME .1
+#define DEFAULT_MUSIC_VOLUME .3
 
 #define POPUP_MSG_DURATION 0.5
 
@@ -51,15 +52,19 @@ extern const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP];
 #define DEBUG
 
 #ifdef DEBUG
-#   define LIB_PLUG_PATH "../build/libplug.so"
-#   define SHUFFLE_PATH "../resources/shuffle.png"
-#   define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
 #   define FONT_PATH "../resources/Alegreya-Regular.ttf"
+#   define MUTED_PATH "../resources/muted.png"
+#   define UNMUTED_PATH "../resources/unmuted.png"
+#   define SHUFFLE_PATH "../resources/shuffle.png"
+#   define LIB_PLUG_PATH "../build/libplug.so"
+#   define CROSSED_SHUFFLE_PATH "../resources/crossed_shuffle.png"
 #else
-#   define LIB_PLUG_PATH "build/libplug.so"
-#   define SHUFFLE_PATH "resources/shuffle.png"
-#   define CROSSED_SHUFFLE_PATH "resources/crossed_shuffle.png"
 #   define FONT_PATH "resources/Alegreya-Regular.ttf"
+#   define MUTED_PATH "resources/muted.png"
+#   define UNMUTED_PATH "resources/unmuted.png"
+#   define SHUFFLE_PATH "resources/shuffle.png"
+#   define LIB_PLUG_PATH "build/libplug.so"
+#   define CROSSED_SHUFFLE_PATH "resources/crossed_shuffle.png"
 #endif
 
 typedef struct {
@@ -142,7 +147,10 @@ enum Popup_Msg {
     PREV_SONG,
     
     ENABLE_SHUFFLE_MODE,
-    DISABLE_SHUFFLE_MODE
+    DISABLE_SHUFFLE_MODE,
+
+    MUTE_MUSIC,
+    UNMUTE_MUSIC,
 };
 
 typedef struct {
@@ -170,15 +178,23 @@ typedef struct {
 
     bool font_loaded;
 
+    bool music_muted;
     bool music_loaded;
     bool music_paused;
 
     bool shuffle_mode;
+ 
     bool shuffle_texture_loaded;
     bool crossed_shuffle_texture_loaded;
 
     Texture_Label shuffle_t;
     Texture_Label crossed_shuffle_t;
+
+    bool muted_texture_loaded;
+    bool unmuted_texture_loaded;
+
+    Texture_Label muted_t;
+    Texture_Label unmuted_t;
 
     Music curr_music;
 
@@ -223,6 +239,8 @@ void plug_unload_music(void);
 
 void plug_reinit(void);
 
+void plug_init_muted_texture(void);
+void plug_init_unmuted_texture(void);
 void plug_init_shuffle_texture(void);
 void plug_init_crossed_shuffle_texture(void);
 
