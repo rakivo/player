@@ -61,10 +61,7 @@ void plug_load_all(void)
     plug->font_loaded = true;
     GenTextureMipmaps(&plug->font.texture);
     SetTextureFilter(plug->font.texture, TEXTURE_FILTER_BILINEAR);
-    plug_init_muted_texture();
-    plug_init_unmuted_texture();
-    plug_init_shuffle_texture();
-    plug_init_crossed_shuffle_texture();
+    plug_init_textures();
     Song* curr_song = plug_get_curr_song();
     if (curr_song && plug_load_music(curr_song)) {
         SetMusicVolume(plug->curr_music, plug->music_volume);
@@ -120,9 +117,7 @@ void plug_reinit(void)
     plug_init_track(false);
     plug_init_song_name(false);
     plug_init_song_time(false);
-    plug_init_muted_texture();
-    plug_init_unmuted_texture();
-    plug_init_shuffle_texture();
+    plug_init_textures();
     plug_init_waiting_for_file_msg();
 }
 
@@ -508,69 +503,52 @@ void plug_init_track(bool cpydef)
     };
 }
 
-void plug_init_shuffle_texture(void)
-{
-    if (!plug->shuffle_texture_loaded) {
-        plug->shuffle_t.texture = LoadTexture(SHUFFLE_PATH);
-        plug->shuffle_texture_loaded = true;
-    }
-    plug->shuffle_t.position = (Vector2) {
-        .x = (GetScreenWidth() - plug->shuffle_t.texture.width / 2) / 2,
-        .y = (GetScreenHeight() - plug->shuffle_t.texture.height / 2) / 2,
-    };
-    plug->shuffle_t.rotation = 0.f;
-    plug->shuffle_t.scale = 0.5;
-    plug->shuffle_t.color = WHITE;
-    plug->shuffle_texture_loaded = true;
-    SetTextureFilter(plug->shuffle_t.texture, TEXTURE_FILTER_BILINEAR);
-}
-
-void plug_init_crossed_shuffle_texture(void)
-{
-    if (!plug->crossed_shuffle_texture_loaded) {
-        plug->crossed_shuffle_t.texture = LoadTexture(CROSSED_SHUFFLE_PATH);
-        plug->crossed_shuffle_texture_loaded = true;
-    }
-    plug->crossed_shuffle_t.position = (Vector2) {
-        .x = (GetScreenWidth() - plug->crossed_shuffle_t.texture.width / 2) / 2,
-        .y = (GetScreenHeight() - plug->crossed_shuffle_t.texture.height / 2) / 2,
-    };
-    plug->crossed_shuffle_t.rotation = 0.f;
-    plug->crossed_shuffle_t.scale = 0.5;
-    plug->crossed_shuffle_t.color = WHITE;
-    SetTextureFilter(plug->crossed_shuffle_t.texture, TEXTURE_FILTER_BILINEAR);
-}
-
-void plug_init_muted_texture(void)
+void plug_init_textures(void)
 {
     if (!plug->muted_texture_loaded) {
         plug->muted_t.texture = LoadTexture(MUTED_PATH);
         plug->muted_texture_loaded = true;
     }
-    plug->muted_t.position = (Vector2) {
-        .x = (GetScreenWidth() - plug->muted_t.texture.width / 2) / 2,
-        .y = (GetScreenHeight() - plug->muted_t.texture.height / 2) / 2,
-    };
-    plug->muted_t.rotation = 0.f;
-    plug->muted_t.scale = 0.5;
-    plug->muted_t.color = WHITE;
-    SetTextureFilter(plug->muted_t.texture, TEXTURE_FILTER_BILINEAR);
-}
-
-void plug_init_unmuted_texture(void)
-{
     if (!plug->unmuted_texture_loaded) {
         plug->unmuted_t.texture = LoadTexture(UNMUTED_PATH);
         plug->unmuted_texture_loaded = true;
     }
-    plug->unmuted_t.position = (Vector2) {
-        .x = (GetScreenWidth() - plug->unmuted_t.texture.width / 2) / 2,
-        .y = (GetScreenHeight() - plug->unmuted_t.texture.height / 2) / 2,
+    if (!plug->shuffle_texture_loaded) {
+        plug->shuffle_t.texture = LoadTexture(SHUFFLE_PATH);
+        plug->shuffle_texture_loaded = true;
+    }
+    if (!plug->crossed_shuffle_texture_loaded) {
+        plug->crossed_shuffle_t.texture = LoadTexture(CROSSED_SHUFFLE_PATH);
+        plug->crossed_shuffle_texture_loaded = true;
+    }
+
+    const Vector2 position = { // Basically sizes of all of the textures are equal: 256x256
+        .x = (GetScreenWidth() - 256 / 2) / 2,
+        .y = (GetScreenHeight() - 256 / 2) / 2,
     };
-    plug->unmuted_t.rotation = 0.f;
-    plug->unmuted_t.scale = 0.5;
-    plug->unmuted_t.color = WHITE;
-    SetTextureFilter(plug->unmuted_t.texture, TEXTURE_FILTER_BILINEAR);
+    const float rotation = 0.f;
+    const float scale = 0.5;
+    const Color color = WHITE;
+
+    plug->muted_t.position = position;
+    plug->muted_t.rotation = rotation;
+    plug->muted_t.scale = scale;
+    plug->muted_t.color = color;
+
+    plug->unmuted_t.position = position;
+    plug->unmuted_t.rotation = rotation;
+    plug->unmuted_t.scale = scale;
+    plug->unmuted_t.color = color;
+
+    plug->shuffle_t.position = position;
+    plug->shuffle_t.rotation = rotation;
+    plug->shuffle_t.scale = scale;
+    plug->shuffle_t.color = color;
+
+    plug->crossed_shuffle_t.position = position;
+    plug->crossed_shuffle_t.rotation = rotation;
+    plug->crossed_shuffle_t.scale = scale;
+    plug->crossed_shuffle_t.color = color;
 }
 
 Song* plug_get_curr_song(void)

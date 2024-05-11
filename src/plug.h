@@ -239,10 +239,7 @@ void plug_unload_music(void);
 
 void plug_reinit(void);
 
-void plug_init_muted_texture(void);
-void plug_init_unmuted_texture(void);
-void plug_init_shuffle_texture(void);
-void plug_init_crossed_shuffle_texture(void);
+void plug_init_textures(void);
 
 void plug_init_popup_msg(void);
 void plug_init_track(bool);
