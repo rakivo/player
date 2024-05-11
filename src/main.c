@@ -54,14 +54,12 @@ int main(void)
 
     srand(time(NULL));
 
-    while (!WindowShouldClose()) {
+    for (; !WindowShouldClose(); plug_frame()) {
         if (IsKeyPressed(KEY_R)) {
-            Plug* plug = plug_pre_reload();
+            void* plug = plug_pre_reload();
             if (!plug_reload()) return 1;
             plug_post_reload(plug);
         }
-
-        plug_frame();
     }
 
     plug_free();

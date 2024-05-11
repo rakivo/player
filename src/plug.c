@@ -15,6 +15,272 @@
     2. Even smarter shuffle system.
 */
 
+#ifdef _WIN32
+#   define DELIM '\\'
+#else
+#   define DELIM '/'
+#endif
+
+#define TEXT_CAP 1024
+
+#define WAITING_MESSAGE   "Drag & Drop Music Here"
+#define NAME_TEXT_MESSAGE "Song name: "
+#define TIME_TEXT_MESSAGE "Time played: "
+
+#define DEFAULT_MUSIC_VOLUME .3
+#define DEFAULT_MUSIC_SEEK_STEP 5.f
+#define DEFAULT_MUSIC_VOLUME_STEP .1
+
+#define POPUP_MSG_DURATION 0.5
+
+#define SUPPORTED_FORMATS_CAP 6
+
+#define DA_INIT_CAP 256
+
+#define DA_PUSH(vec, x) do {                                                         \
+    assert((vec).count >= 0  && "Count can't be negative");                          \
+    if ((vec).count >= (vec).cap) {                                                  \
+        (vec).cap = (vec).cap == 0 ? DA_INIT_CAP : (vec).cap*2;                      \
+        (vec).songs = realloc((vec).songs, (vec).cap*sizeof(*(vec).songs));          \
+        assert((vec).songs != NULL && "Buy more RAM lol");                           \
+    }                                                                                \
+    (vec).songs[(vec).count++] = (x);                                                \
+} while (0)
+
+#define DA_LEN(vec) (sizeof(vec)/sizeof(vec[0]))
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define PL_RAND(max) (((size_t) rand() << 32) | rand()) % (max)
+
+#define TEXTURE(name)                                                                \
+    Texture_Label name##_t;                                                          \
+    bool name##_texture_loaded                                                       \
+
+#define INIT_TEXTURE(texture_, path)                                                 \
+    if (!plug->texture_##_texture_loaded) {                                          \
+        plug->texture_##_t.texture = LoadTexture(path);                              \
+        plug->texture_##_texture_loaded = true;                                      \
+    }                                                                                \
+    plug->texture_##_t.position = position;                                          \
+    plug->texture_##_t.rotation = rotation;                                          \
+    plug->texture_##_t.scale = scale;                                                \
+    plug->texture_##_t.color = color;
+
+#define UNLOAD_TEXTURE(name)                                                         \
+    if (plug->name##_texture_loaded) {                                               \
+        UnloadTexture(plug->name##_t.texture);                                       \
+        plug->name##_texture_loaded = false;                                         \
+    }
+
+#define INIT_CONSTANT_TEXT_LABEL(label_)                                             \
+    plug->label_.text_size = MeasureTextEx(plug->font, plug->label_.text,            \
+                                           plug->font_size, plug->font_spacing);     \
+    plug->label_.text_pos = center_text(plug->label_.text_size);
+
+#define INIT_TEXT_LABEL(label_, msg, margin)                                         \
+    if (cpydef) {                                                                    \
+        strcpy(plug->label_.text, msg);                                              \
+        plug->label_.text_size = MeasureTextEx(plug->font, plug->label_.text,        \
+                                               plug->font_size, plug->font_spacing); \
+    }                                                                                \
+    plug->label_.text_pos = center_text(plug->label_.text_size);                     \
+    plug->label_.text_pos.x = plug->label_.text_pos.x / 35;                          \
+    plug->label_.text_pos.y = GetScreenHeight() - margin;                            \
+
+#define DRAW_TEXT_EX(name, color) do {                                               \
+    DrawTextEx(plug->font,                                                           \
+           plug->name.text,                                                          \
+           plug->name.text_pos,                                                      \
+           plug->font_size,                                                          \
+           plug->font_spacing,                                                       \
+           color);                                                                   \
+} while (0)                                                                          \
+
+#define DRAW_TEXTURE_EX(name)                                                        \
+    DrawTextureEx(plug->name##_t.texture,                                            \
+                  plug->name##_t.position,                                           \
+                  plug->name##_t.rotation,                                           \
+                  plug->name##_t.scale,                                              \
+                  plug->name##_t.color)
+
+#define DRAW_LINE_EX(name)                                                           \
+    DrawLineEx(plug->name.start_pos,                                                 \
+               plug->name.end_pos,                                                   \
+               plug->name.thickness,                                                 \
+               plug->name.color);                                                    \
+
+#define DRAW_RECTANGLE_ROUNDED(name)                                                 \
+    DrawRectangleRounded(plug->name.rect,                                            \
+               plug->name.roundness,                                                 \
+               plug->name.segments,                                                  \
+               plug->name.color);                                                    \
+
+
+#define UPDATE_POPUP_MSG(type)                                                       \
+    plug->show_popup_msg = true;                                                     \
+    plug->popup_msg_start_time = GetTime();                                          \
+    plug->popup_msg_type = type                                                      \
+
+typedef struct {
+    char text[TEXT_CAP];
+    Vector2 text_size;
+    Vector2 text_pos;
+} Text_Label;
+
+typedef struct {
+    Texture2D texture;
+
+    Vector2 position;
+
+    float rotation;
+    float scale;
+
+    Color color;
+} Texture_Label;
+
+typedef struct {
+    Rectangle rect;
+
+    float roundness;
+
+    int segments;
+
+    Color color;
+} Track_Cursor;
+
+typedef struct {
+    int track_margin_bottom;
+    int track_margin_sides;
+
+    float thickness;
+
+    Color color;
+
+    Track_Cursor cursor;
+
+    Vector2 start_pos;
+    Vector2 end_pos;
+} Seek_Track;
+
+typedef struct {
+    char path[TEXT_CAP];
+
+    size_t times_played;
+    // ...
+} Song;
+
+typedef struct {
+    Song* songs;
+
+    size_t cap;
+    size_t curr;
+    size_t prev;
+    size_t count;
+
+    Song prev_song;
+
+    float length;
+
+    float time_check;
+    float time_played;
+} Playlist;
+
+enum App_State {
+    WAITING_FOR_FILE,
+    MAIN_SCREEN
+};
+
+enum Popup_Msg {
+    SEEK_FORWARD,
+    SEEK_BACKWARD,
+
+    VOLUME_UP,
+    VOLUME_DOWN,
+
+    NEXT_SONG,
+    PREV_SONG,
+    
+    ENABLE_SHUFFLE_MODE,
+    DISABLE_SHUFFLE_MODE,
+
+    MUTE_MUSIC,
+    UNMUTE_MUSIC,
+};
+
+typedef struct {
+    enum App_State app_state;
+
+    Color background_color;
+
+    float font_size;
+    float font_spacing;
+
+    Font font;
+
+    Seek_Track seek_track;
+
+    Text_Label waiting_for_file_msg;
+    Text_Label song_name;
+    Text_Label song_time;
+    Text_Label popup_msg;
+
+    bool show_popup_msg;
+
+    float popup_msg_start_time;
+
+    enum Popup_Msg popup_msg_type;
+
+    bool font_loaded;
+
+    bool music_muted;
+    bool music_loaded;
+    bool music_paused;
+
+    bool shuffle_mode;
+ 
+    TEXTURE(muted);
+    TEXTURE(unmuted);
+    TEXTURE(shuffle);
+    TEXTURE(crossed_shuffle);
+
+    Music curr_music;
+
+    float music_volume;
+
+    Playlist pl;
+} Plug;
+
+bool is_music(const char*);
+bool is_mouse_on_track(Vector2, Seek_Track);
+Vector2 center_text(Vector2);
+Song new_song(const char*, size_t);
+void get_song_name(const char*, char*, size_t);
+
+bool plug_load_music(Song*);
+bool plug_play_next_song(void);
+
+Song* plug_get_curr_song(void);
+Song* plug_get_nth_song(size_t);
+
+size_t plug_pull_next_song(void);
+size_t plug_pull_prev_song(void);
+
+void plug_print_songs(void);
+void plug_load_all(void);
+void plug_unload_all(void);
+void plug_unload_music(void);
+void plug_handle_keys(void);
+void plug_handle_buttons(void);
+void plug_handle_dropped_files(void);
+void plug_draw_main_screen(void);
+void plug_reinit(void);
+void plug_init_track(bool);
+void plug_init_textures(void);
+void plug_init_text_labels(bool);
+void plug_init_constant_text_labels(void);
+
 const char* SUPPORTED_FORMATS[SUPPORTED_FORMATS_CAP] = {".xm", ".wav", ".ogg", ".mp3", ".qoa", ".mod"};
 
 static Plug* plug = NULL;
@@ -40,15 +306,15 @@ void plug_init(void)
     plug->music_volume = DEFAULT_MUSIC_VOLUME;
 }
 
-Plug* plug_pre_reload(void)
+void* plug_pre_reload(void)
 {
     plug_unload_all();
-    return plug;
+    return (void*) plug;
 }
 
-void plug_post_reload(Plug* pplug)
+void plug_post_reload(void* pplug)
 {
-    plug = pplug;
+    plug = (Plug*) pplug;
     plug_load_all();
 }
 
@@ -389,7 +655,7 @@ Song* plug_get_curr_song(void)
     else return NULL;
 }
 
-Song* plug_get_nth_song(const size_t n)
+Song* plug_get_nth_song(size_t n)
 {
     if (n >= 0 && n < plug->pl.count)
         return &plug->pl.songs[n];
@@ -489,7 +755,7 @@ void plug_print_songs(void)
         printf("playlist[%zu] = %s\n", i, plug->pl.songs[i].path);
 }
 
-Song new_song(const char* file_path, const size_t times_played)
+Song new_song(const char* file_path, size_t times_played)
 {
     Song new_song;
     new_song.times_played = times_played;
@@ -515,7 +781,7 @@ bool is_music(const char* path)
     return false;
 }
 
-bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
+bool is_mouse_on_track(Vector2 mouse_pos, Seek_Track seek_track)
 {
     const float track_pad = seek_track.thickness*2;
     return (mouse_pos.x >= seek_track.start_pos.x) && (mouse_pos.x <= seek_track.end_pos.x) &&
@@ -523,7 +789,7 @@ bool is_mouse_on_track(const Vector2 mouse_pos, Seek_Track seek_track)
            (mouse_pos.y <= (seek_track.end_pos.y + seek_track.thickness + track_pad));
 }
 
-Vector2 center_text(const Vector2 text_size)
+Vector2 center_text(Vector2 text_size)
 {
     return (Vector2) {
         .x = (GetScreenWidth() - text_size.x) / 2,
@@ -531,10 +797,10 @@ Vector2 center_text(const Vector2 text_size)
     };
 }
 
-void get_song_name(const char* input, char* o, const size_t o_n)
+void get_song_name(const char* input, char* o, size_t o_n)
 {
-    size_t n = strlen(input);
     size_t end = 0;
+    size_t n = strlen(input);
 
     for (size_t i = n - 1; i > 0 && input[i] != DELIM; --i)
         if (end < o_n - 1)
