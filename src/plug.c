@@ -7,14 +7,6 @@
 
 #include "plug.h"
 
-/* TODO:
-    1. If key that regulates volume / seeks is pressed, maybe it's better to
-       repeat its action every 0.3 or 0.5 second than user gonna spam that key.
-       Convenience above all eventually.
-
-    2. Even smarter shuffle system.
-*/
-
 #ifdef _WIN32
 #   define DELIM '\\'
 #else
@@ -307,12 +299,12 @@ void plug_init(void)
 void* plug_pre_reload(void)
 {
     plug_unload_all();
-    return (void*) plug;
+    return plug;
 }
 
 void plug_post_reload(void* pplug)
 {
-    plug = (Plug*) pplug;
+    plug = pplug;
     plug_load_all();
 }
 
@@ -483,7 +475,7 @@ void plug_handle_dropped_files(void)
 }
 
 void plug_handle_buttons(void)
-{
+{    
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mouse_pos = GetMousePosition();
 
